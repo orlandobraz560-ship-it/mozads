@@ -165,25 +165,22 @@ def tarefas():
     conn = get_db()
     usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
     
-    # Verificar se é domingo
     hoje = date.today()
     is_domingo = hoje.weekday() == 6
     
-    # Buscar limite de tarefas por dia baseado no nível do usuário
     nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
     limite_diario = nivel_usuario['tarefas_por_dia'] if nivel_usuario else 0
+    recompensa_anuncio = nivel_usuario['recompensa_por_anuncio'] if nivel_usuario else 0
     
     if is_domingo:
         limite_diario = 0
     
-    # Contar tarefas feitas HOJE
     tarefas_feitas_hoje = conn.execute('''
         SELECT COUNT(*) as total 
         FROM tarefas_assistidas 
         WHERE usuario_id = ? AND date(data_assistida) = date('now')
     ''', (session['usuario_id'],)).fetchone()['total']
     
-    # Buscar tarefas disponíveis para o nível do usuário
     tarefas_disponiveis = conn.execute('''
         SELECT t.*, 
                CASE WHEN ut.id IS NOT NULL THEN 1 ELSE 0 END as concluida_hoje
@@ -191,14 +188,12 @@ def tarefas():
         LEFT JOIN tarefas_assistidas ut ON t.id = ut.tarefa_id 
             AND ut.usuario_id = ? 
             AND date(ut.data_assistida) = date('now')
-        WHERE t.nivel_requerido <= ? AND t.ativo = 1
+        WHERE t.ativo = 1
         ORDER BY t.id
-    ''', (session['usuario_id'], usuario['nivel'])).fetchall()
+    ''', (session['usuario_id'],)).fetchall()
     
-    # Filtrar apenas tarefas não concluídas hoje
     tarefas_para_fazer = [dict(t) for t in tarefas_disponiveis if not t['concluida_hoje']]
     
-    # Buscar todos os níveis para o progresso
     niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
     progresso = {}
     for nivel in niveis:
@@ -226,31 +221,19 @@ def tarefas():
                          tarefas_disponiveis=tarefas_para_fazer,
                          tarefas_feitas_hoje=tarefas_feitas_hoje,
                          limite_diario=limite_diario,
+                         recompensa_anuncio=recompensa_anuncio,
                          is_domingo=is_domingo)
 
-@app.route('/assistir_tarefa', methods=['POST'])
+@app.route('/assistir_tarefa_anuncio', methods=['POST'])
 @login_obrigatorio
-def assistir_tarefa():
-    data = json.loads(request.data)
-    tarefa_id = data.get('tarefa_id')
-    recompensa = data.get('recompensa')
-    
+def assistir_tarefa_anuncio():
     conn = get_db()
     
-    # Verificar se já assistiu hoje
-    ja_assistiu_hoje = conn.execute('''
-        SELECT id FROM tarefas_assistidas 
-        WHERE usuario_id = ? AND tarefa_id = ? AND date(data_assistida) = date('now')
-    ''', (session['usuario_id'], tarefa_id)).fetchone()
+    usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
     
-    if ja_assistiu_hoje:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': 'Você já fez esta tarefa hoje!'})
-    
-    # Verificar limite diário
-    nivel_usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    nivel_info = conn.execute('SELECT tarefas_por_dia FROM niveis WHERE id = ?', (nivel_usuario['nivel'],)).fetchone()
     limite_diario = nivel_info['tarefas_por_dia'] if nivel_info else 0
+    recompensa = nivel_info['recompensa_por_anuncio'] if nivel_info else 0
     
     tarefas_feitas_hoje = conn.execute('''
         SELECT COUNT(*) as total FROM tarefas_assistidas 
@@ -261,16 +244,20 @@ def assistir_tarefa():
         conn.close()
         return jsonify({'sucesso': False, 'erro': 'Você já atingiu o limite de tarefas hoje!'})
     
-    # Registrar tarefa assistida
-    conn.execute('INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) VALUES (?, ?, ?)',
-                (session['usuario_id'], tarefa_id, recompensa))
-    conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? WHERE id = ?',
-                (recompensa, recompensa, session['usuario_id']))
+    conn.execute('''
+        INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
+        VALUES (?, ?, ?)
+    ''', (session['usuario_id'], 0, recompensa))
+    
+    conn.execute('''
+        UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
+        WHERE id = ?
+    ''', (recompensa, recompensa, session['usuario_id']))
     
     conn.commit()
     conn.close()
     
-    return jsonify({'sucesso': True})
+    return jsonify({'sucesso': True, 'recompensa': recompensa})
 
 @app.route('/depositar', methods=['GET', 'POST'])
 @login_obrigatorio
@@ -378,7 +365,6 @@ def vip():
             
             if novo_nivel_id > nivel_atual:
                 if saldo_total >= valor_novo_vip:
-                    # Pagar o valor cheio
                     if usuario['saldo_principal'] >= valor_novo_vip:
                         novo_saldo_principal = usuario['saldo_principal'] - valor_novo_vip
                         conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', 
@@ -389,7 +375,6 @@ def vip():
                         conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', 
                                    (restante, session['usuario_id']))
                     
-                    # Atualizar nível
                     nova_validade = (datetime.now() + timedelta(days=novo_nivel['duracao_dias'])).strftime('%Y-%m-%d')
                     conn.execute('''
                         UPDATE usuarios 
@@ -519,7 +504,7 @@ def admin_tarefas():
     conn.close()
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
-@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
@@ -534,7 +519,7 @@ def confirmar_deposito(pedido_id):
     
     return render_template('confirmar_deposito.html', pedido=pedido)
 
-@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_deposito(pedido_id):
     conn = get_db()
@@ -548,14 +533,13 @@ def rejeitar_deposito(pedido_id):
     
     return render_template('rejeitar_deposito.html', pedido=pedido)
 
-@app.route('/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_saque(saque_id):
     conn = get_db()
     saque = conn.execute('SELECT p.*, u.nome as usuario_nome, u.email as usuario_email FROM pedidos_saque p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (saque_id,)).fetchone()
     
     if request.method == 'POST':
-        # Remover saldo da comissão
         conn.execute('UPDATE usuarios SET saldo_comissao = MAX(saldo_comissao - ?, 0) WHERE id = ?', (saque['valor'], saque['usuario_id']))
         conn.execute('UPDATE pedidos_saque SET status = "pago", data_processamento = CURRENT_TIMESTAMP WHERE id = ?', (saque_id,))
         conn.commit()
@@ -564,7 +548,7 @@ def confirmar_saque(saque_id):
     
     return render_template('confirmar_saque.html', saque=saque)
 
-@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_saque(saque_id):
     conn = get_db()
@@ -578,7 +562,7 @@ def rejeitar_saque(saque_id):
     
     return render_template('rejeitar_saque.html', saque=saque)
 
-@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
+@app.route('/admin/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def ajustar_saldo(usuario_id):
     conn = get_db()
@@ -609,7 +593,7 @@ def ajustar_saldo(usuario_id):
     
     return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
 
-@app.route('/deposito_manual', methods=['POST'])
+@app.route('/admin/deposito_manual', methods=['POST'])
 @admin_obrigatorio
 def deposito_manual():
     usuario_id = int(request.form['usuario_id'])
@@ -631,7 +615,7 @@ def deposito_manual():
     flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
     return redirect(url_for('admin_usuarios'))
 
-@app.route('/adicionar_tarefa_multimidia', methods=['POST'])
+@app.route('/admin/adicionar_tarefa_multimidia', methods=['POST'])
 @admin_obrigatorio
 def adicionar_tarefa_multimidia():
     titulo = request.form['titulo']
@@ -653,7 +637,7 @@ def adicionar_tarefa_multimidia():
     flash('✅ Tarefa adicionada!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/remover_tarefa_multimidia/<int:tarefa_id>')
+@app.route('/admin/remover_tarefa_multimidia/<int:tarefa_id>')
 @admin_obrigatorio
 def remover_tarefa_multimidia(tarefa_id):
     conn = get_db()

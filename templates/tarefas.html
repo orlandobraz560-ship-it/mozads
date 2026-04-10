@@ -40,6 +40,7 @@
         .timer-num { font-size: 48px; font-weight: bold; color: #2196f3; margin: 20px 0; }
         .btn-confirmar { background: #ccc; color: white; border: none; padding: 12px 20px; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
         .btn-confirmar.active { background: #4caf50; cursor: pointer; }
+        .anuncio-container { margin: 20px 0; min-height: 250px; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         
         .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
         .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
@@ -151,9 +152,9 @@
 
     <script>
         let nivelSelecionado = {{ usuario.nivel }};
-        let tarefasDisponiveis = {{ tarefas_disponiveis|tojson }};
         let tarefasFeitasHoje = {{ tarefas_feitas_hoje }};
         let limiteDiario = {{ limite_diario }};
+        let RECOMPENSA_POR_ANUNCIO = {{ recompensa_anuncio }};
 
         function selecionarNivel(nivel) {
             nivelSelecionado = nivel;
@@ -170,11 +171,6 @@
                 return;
             }
             
-            if (tarefasDisponiveis.length === 0) {
-                mostrarToast('Nenhuma tarefa disponível no momento!', 'erro');
-                return;
-            }
-
             const modal = document.getElementById('modalTarefas');
             modal.innerHTML = `
                 <div class="modal-anuncio" onclick="fecharModalTarefas(event)">
@@ -183,14 +179,12 @@
                             <span class="close-modal" onclick="fecharModalTarefas()">&times;</span>
                         </div>
                         <div class="modal-body">
-                            <h3>🎬 Escolha um anúncio</h3>
+                            <h3>🎬 Assista um anúncio e ganhe ${RECOMPENSA_POR_ANUNCIO} MZN</h3>
                             <div id="listaTarefas" style="margin-top: 20px;">
-                                ${tarefasDisponiveis.map(tarefa => `
-                                    <button onclick="assistirAnuncio(${tarefa.id}, ${tarefa.recompensa})" style="background: #2196f3; color: white; border: none; padding: 15px; margin: 10px 0; border-radius: 12px; width: 100%; font-size: 16px; cursor: pointer;">
-                                        📺 ${tarefa.titulo}<br>
-                                        <small>💰 +${tarefa.recompensa} MZN</small>
-                                    </button>
-                                `).join('')}
+                                <button onclick="assistirAnuncio()" style="background: linear-gradient(135deg, #2196f3 0%, #21d4fd 100%); color: white; border: none; padding: 15px; margin: 10px 0; border-radius: 12px; width: 100%; font-size: 18px; cursor: pointer; font-weight: bold;">
+                                    📺 ASSISTIR ANÚNCIO<br>
+                                    <small>💰 +${RECOMPENSA_POR_ANUNCIO} MZN</small>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -199,11 +193,9 @@
             modal.style.display = 'block';
         }
 
-        function assistirAnuncio(tarefaId, recompensa) {
-            // Fechar modal de tarefas
+        function assistirAnuncio() {
             fecharModalTarefas();
             
-            // Criar modal do anúncio
             const modalAnuncio = document.createElement('div');
             modalAnuncio.className = 'modal-anuncio';
             modalAnuncio.innerHTML = `
@@ -213,13 +205,13 @@
                     </div>
                     <div class="modal-body">
                         <h3>📺 Assistindo anúncio...</h3>
-                        <div id="anuncioContainer" style="margin: 20px 0; min-height: 200px;">
-                            <div style="text-align: center; padding: 20px;">
+                        <div class="anuncio-container" id="anuncioContainer">
+                            <div style="text-align: center; color: white; padding: 20px;">
                                 <div class="timer-num" id="timerNum">30</div>
-                                <div>Aguarde {tempoRestante} segundos para ganhar</div>
+                                <div>Aguarde para ganhar ${RECOMPENSA_POR_ANUNCIO} MZN</div>
                             </div>
                         </div>
-                        <button id="confirmarBtn" class="btn-confirmar" disabled>Aguardando anúncio...</button>
+                        <button id="confirmarBtn" class="btn-confirmar" disabled>Aguardando conclusão...</button>
                     </div>
                 </div>
             `;
@@ -229,8 +221,6 @@
             const timerNum = document.getElementById('timerNum');
             const confirmarBtn = document.getElementById('confirmarBtn');
             
-            // Simular carregamento do anúncio (aqui você pode integrar o código da Monetag)
-            // Por enquanto, usamos um timer simples
             const timerInterval = setInterval(() => {
                 tempoRestante--;
                 if (timerNum) timerNum.innerText = tempoRestante;
@@ -240,24 +230,24 @@
                     if (confirmarBtn) {
                         confirmarBtn.disabled = false;
                         confirmarBtn.classList.add('active');
-                        confirmarBtn.innerHTML = `✅ Confirmar e Ganhar ${recompensa} MZN`;
-                        confirmarBtn.onclick = () => confirmarGanho(tarefaId, recompensa, modalAnuncio);
+                        confirmarBtn.innerHTML = `✅ Confirmar e Ganhar ${RECOMPENSA_POR_ANUNCIO} MZN`;
+                        confirmarBtn.onclick = () => confirmarGanho(modalAnuncio);
                     }
                 }
             }, 1000);
         }
 
-        function confirmarGanho(tarefaId, recompensa, modalAnuncio) {
-            fetch('/assistir_tarefa', {
+        function confirmarGanho(modalAnuncio) {
+            fetch('/assistir_tarefa_anuncio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tarefa_id: tarefaId, recompensa: recompensa })
+                body: JSON.stringify({})
             })
             .then(response => response.json())
             .then(data => {
                 if (data.sucesso) {
                     if (modalAnuncio) modalAnuncio.remove();
-                    mostrarToast(`✅ Você ganhou ${recompensa} MZN!`, 'sucesso');
+                    mostrarToast(`✅ Você ganhou ${RECOMPENSA_POR_ANUNCIO} MZN!`, 'sucesso');
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     mostrarToast(`❌ ${data.erro}`, 'erro');

@@ -13,16 +13,12 @@
         .saldo-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .saldo-valor { font-size: 28px; font-weight: bold; color: #2e7d32; }
         
-        /* Aviso de Domingo */
         .domingo-aviso { background: #ff9800; color: white; padding: 15px; border-radius: 16px; text-align: center; margin-bottom: 16px; }
-        
-        /* Progresso Diário */
         .progresso-diario { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: center; color: white; }
         .progresso-diario .limite { font-size: 32px; font-weight: bold; }
         .progresso-bar { background: rgba(255,255,255,0.3); border-radius: 10px; height: 10px; margin-top: 10px; overflow: hidden; }
         .progresso-fill { background: white; height: 100%; border-radius: 10px; transition: width 0.3s; }
         
-        /* Níveis VIP */
         .niveis-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
         .nivel-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s; }
         .nivel-card.locked { opacity: 0.5; filter: grayscale(0.3); cursor: not-allowed; }
@@ -36,17 +32,14 @@
         .btn-tarefas:active { transform: scale(0.98); }
         .btn-tarefas:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* Modal */
-        .modal-tarefas { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content-tarefas { background: white; border-radius: 20px; max-width: 500px; width: 100%; max-height: 80%; overflow-y: auto; }
-        .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .close-modal { font-size: 28px; cursor: pointer; color: #999; }
-        .tarefa-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
-        .tarefa-info h4 { font-size: 16px; margin-bottom: 4px; }
-        .tarefa-info p { font-size: 12px; color: #666; }
-        .tarefa-recompensa { color: #4caf50; font-weight: bold; }
-        .btn-assistir { background: #2196f3; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-        .sem-tarefas { text-align: center; padding: 40px; color: #999; }
+        .modal-anuncio { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; border-radius: 20px; max-width: 400px; width: 100%; overflow: hidden; }
+        .modal-header { padding: 15px; text-align: right; border-bottom: 1px solid #eee; }
+        .close-modal { font-size: 24px; cursor: pointer; color: #999; }
+        .modal-body { padding: 20px; text-align: center; }
+        .timer-num { font-size: 48px; font-weight: bold; color: #2196f3; margin: 20px 0; }
+        .btn-confirmar { background: #ccc; color: white; border: none; padding: 12px 20px; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; }
+        .btn-confirmar.active { background: #4caf50; cursor: pointer; }
         
         .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
         .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
@@ -57,6 +50,19 @@
         .erro { background: #f8d7da; color: #721c24; }
         .info { background: #e3f2fd; color: #1565c0; }
     </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <!-- Monetag Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(function(reg) {
+                    console.log('Service Worker registrado!', reg);
+                })
+                .catch(function(err) {
+                    console.log('Erro ao registrar Service Worker:', err);
+                });
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -71,7 +77,6 @@
             <p>Assista anúncios e ganhe dinheiro!</p>
         </div>
 
-        <!-- Aviso de Domingo -->
         {% if is_domingo %}
         <div class="domingo-aviso">
             🙏 DOMINGO É DIA DE DESCANSO! 🙏<br>
@@ -82,9 +87,9 @@
         <div class="saldo-card">
             <div>💰 Seu Saldo</div>
             <div class="saldo-valor" id="saldo-total">{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</div>
+            <div style="font-size: 12px; color: #666;">Principal: {{ "%.2f"|format(usuario.saldo_principal) }} MZN | Comissão: {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</div>
         </div>
 
-        <!-- Progresso Diário -->
         <div class="progresso-diario">
             <div>📅 TAREFAS DE HOJE</div>
             <div class="limite">{{ tarefas_feitas_hoje }}/{{ limite_diario }}</div>
@@ -172,25 +177,21 @@
 
             const modal = document.getElementById('modalTarefas');
             modal.innerHTML = `
-                <div class="modal-tarefas" onclick="fecharModalTarefas(event)">
-                    <div class="modal-content-tarefas" onclick="event.stopPropagation()">
+                <div class="modal-anuncio" onclick="fecharModalTarefas(event)">
+                    <div class="modal-content" onclick="event.stopPropagation()">
                         <div class="modal-header">
-                            <h3>🎬 Tarefas Disponíveis</h3>
                             <span class="close-modal" onclick="fecharModalTarefas()">&times;</span>
                         </div>
-                        <div id="listaTarefas">
-                            ${tarefasDisponiveis.map(tarefa => `
-                                <div class="tarefa-item" data-id="${tarefa.id}">
-                                    <div class="tarefa-info">
-                                        <h4>📺 ${tarefa.titulo}</h4>
-                                        <p>${tarefa.descricao || 'Assista ao anúncio e ganhe dinheiro!'}</p>
-                                        <span class="tarefa-recompensa">💰 +${tarefa.recompensa} MZN</span>
-                                    </div>
-                                    <div>
-                                        <button class="btn-assistir" onclick="assistirAnuncio(${tarefa.id}, ${tarefa.recompensa}, '${tarefa.url.replace(/'/g, "\\'")}')">▶️ Assistir</button>
-                                    </div>
-                                </div>
-                            `).join('')}
+                        <div class="modal-body">
+                            <h3>🎬 Escolha um anúncio</h3>
+                            <div id="listaTarefas" style="margin-top: 20px;">
+                                ${tarefasDisponiveis.map(tarefa => `
+                                    <button onclick="assistirAnuncio(${tarefa.id}, ${tarefa.recompensa})" style="background: #2196f3; color: white; border: none; padding: 15px; margin: 10px 0; border-radius: 12px; width: 100%; font-size: 16px; cursor: pointer;">
+                                        📺 ${tarefa.titulo}<br>
+                                        <small>💰 +${tarefa.recompensa} MZN</small>
+                                    </button>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -198,50 +199,55 @@
             modal.style.display = 'block';
         }
 
-        function assistirAnuncio(tarefaId, recompensa, url) {
-            const modalVideo = document.createElement('div');
-            modalVideo.className = 'modal-video';
-            modalVideo.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:3000; display:flex; align-items:center; justify-content:center; padding:20px;';
-            modalVideo.innerHTML = `
-                <div style="background:white; border-radius:20px; max-width:400px; width:100%; overflow:hidden;">
-                    <div style="padding:10px; text-align:right;">
-                        <span style="cursor:pointer; font-size:24px; color:#999;" onclick="this.closest('.modal-video').remove()">&times;</span>
+        function assistirAnuncio(tarefaId, recompensa) {
+            // Fechar modal de tarefas
+            fecharModalTarefas();
+            
+            // Criar modal do anúncio
+            const modalAnuncio = document.createElement('div');
+            modalAnuncio.className = 'modal-anuncio';
+            modalAnuncio.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <span class="close-modal" onclick="fecharModalAnuncio(this)">&times;</span>
                     </div>
-                    <div>
-                        <iframe src="${url}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%; height:300px;"></iframe>
-                    </div>
-                    <div style="text-align:center; padding:15px;">
-                        <div id="timerDisplay">Assista por 30 segundos</div>
-                        <div id="timerNum" style="font-size:48px; font-weight:bold; color:#2196f3;">30</div>
-                        <button id="confirmarBtn" style="background:#ccc; padding:10px 20px; border:none; border-radius:25px;" disabled>Aguarde...</button>
+                    <div class="modal-body">
+                        <h3>📺 Assistindo anúncio...</h3>
+                        <div id="anuncioContainer" style="margin: 20px 0; min-height: 200px;">
+                            <div style="text-align: center; padding: 20px;">
+                                <div class="timer-num" id="timerNum">30</div>
+                                <div>Aguarde {tempoRestante} segundos para ganhar</div>
+                            </div>
+                        </div>
+                        <button id="confirmarBtn" class="btn-confirmar" disabled>Aguardando anúncio...</button>
                     </div>
                 </div>
             `;
-            document.body.appendChild(modalVideo);
+            document.body.appendChild(modalAnuncio);
             
             let tempoRestante = 30;
-            const timerDisplay = document.getElementById('timerDisplay');
             const timerNum = document.getElementById('timerNum');
             const confirmarBtn = document.getElementById('confirmarBtn');
             
+            // Simular carregamento do anúncio (aqui você pode integrar o código da Monetag)
+            // Por enquanto, usamos um timer simples
             const timerInterval = setInterval(() => {
                 tempoRestante--;
-                if (timerDisplay) timerDisplay.innerText = `Assista por ${tempoRestante} segundos`;
                 if (timerNum) timerNum.innerText = tempoRestante;
                 
                 if (tempoRestante <= 0) {
                     clearInterval(timerInterval);
                     if (confirmarBtn) {
                         confirmarBtn.disabled = false;
-                        confirmarBtn.style.background = '#4caf50';
+                        confirmarBtn.classList.add('active');
                         confirmarBtn.innerHTML = `✅ Confirmar e Ganhar ${recompensa} MZN`;
-                        confirmarBtn.onclick = () => confirmarGanho(tarefaId, recompensa, modalVideo);
+                        confirmarBtn.onclick = () => confirmarGanho(tarefaId, recompensa, modalAnuncio);
                     }
                 }
             }, 1000);
         }
 
-        function confirmarGanho(tarefaId, recompensa, modalVideo) {
+        function confirmarGanho(tarefaId, recompensa, modalAnuncio) {
             fetch('/assistir_tarefa', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -250,25 +256,29 @@
             .then(response => response.json())
             .then(data => {
                 if (data.sucesso) {
-                    if (modalVideo) modalVideo.remove();
-                    fecharModalTarefas();
+                    if (modalAnuncio) modalAnuncio.remove();
                     mostrarToast(`✅ Você ganhou ${recompensa} MZN!`, 'sucesso');
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     mostrarToast(`❌ ${data.erro}`, 'erro');
-                    if (modalVideo) modalVideo.remove();
+                    if (modalAnuncio) modalAnuncio.remove();
                 }
             })
             .catch(error => {
                 mostrarToast('❌ Erro de conexão', 'erro');
-                if (modalVideo) modalVideo.remove();
+                if (modalAnuncio) modalAnuncio.remove();
             });
         }
 
-        function fecharModalTarefas(event) {
+        function fecharModalTarefas() {
             const modal = document.getElementById('modalTarefas');
             modal.style.display = 'none';
             modal.innerHTML = '';
+        }
+
+        function fecharModalAnuncio(elemento) {
+            const modal = elemento.closest('.modal-anuncio');
+            if (modal) modal.remove();
         }
 
         function mostrarToast(mensagem, tipo) {

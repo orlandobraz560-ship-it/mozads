@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários - Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h2 {
+            font-size: 24px;
+        }
+        .btn {
+            background: #e94560;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            display: inline-block;
+        }
+        .btn-success {
+            background: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 2px;
+            font-size: 12px;
+        }
+        .card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        th {
+            background: #16213e;
+        }
+        .pendente {
+            background: #ff9800;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            display: inline-block;
+        }
+        input, select {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            margin: 5px;
+        }
+        .form-deposito {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            margin: 0;
+        }
+        .flash {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info { background: #e3f2fd; color: #1565c0; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>👥 Gerenciar Usuários</h2>
+            <div>
+                <a href="/admin_painel" class="btn">← Dashboard</a>
+                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
+                <a href="/admin_saques" class="btn">💸 Saques</a>
+                <a href="/admin_tarefas" class="btn">🎬 Tarefas</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Depósito Manual Rápido -->
+        <div class="card">
+            <h3 style="margin-bottom: 15px;">💰 Depósito Manual Rápido</h3>
+            <form method="POST" action="/deposito_manual" class="form-deposito">
+                <div class="form-group">
+                    <label>Selecione o usuário</label>
+                    <select name="usuario_id" required>
+                        <option value="">-- Selecione --</option>
+                        {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">{{ usuario.nome }} ({{ usuario.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de saldo</label>
+                    <select name="tipo_saldo" required>
+                        <option value="saldo_principal">💰 Saldo Principal</option>
+                        <option value="saldo_comissao">⭐ Saldo Comissão</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor (MZN)</label>
+                    <input type="number" name="valor" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Mudar nível (opcional)</label>
+                    <select name="nivel_id">
+                        <option value="0">Manter nível atual</option>
+                        {% for nivel in niveis %}
+                            <option value="{{ nivel.id }}">{{ nivel.nome }} ({{ nivel.investimento }} MZN)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-success">💰 Adicionar Saldo</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de Usuários -->
+        <div class="card">
+            <h3 style="margin-bottom: 15px;">📋 Lista de Usuários</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Nível</th>
+                            <th>Saldo Principal</th>
+                            <th>Saldo Comissão</th>
+                            <th>Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.id }}</td>
+                            <td>{{ usuario.nome }}{% if usuario.is_admin %} 👑 ADMIN{% endif %}</td>
+                            <td><small>{{ usuario.email }}</small></td>
+                            <td>{{ usuario.telefone or '-' }}</td>
+                            <td><span class="pendente">{{ usuario.nivel_nome }}</span></td>
+                            <td>{{ "%.2f"|format(usuario.saldo_principal) }} MZN</td>
+                            <td>{{ "%.2f"|format(usuario.saldo_comissao) }} MZN</td>
+                            <td><strong>{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</strong></td>
+                            <td>
+                                <a href="/ajustar_saldo/{{ usuario.id }}" class="btn-warning">💰 Ajustar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

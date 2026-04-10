@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar Saque - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-primary { background: #2196f3; color: white; }
+        .info { color: #ff9800; }
+        .dados-cliente {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>✅ Confirmar Pagamento de Saque</h2>
+            
+            {% if saque %}
+            <p><strong>💰 Valor solicitado:</strong> {{ saque.valor }} MZN</p>
+            <p><strong>💸 Taxa (5%):</strong> {{ saque.taxa }} MZN</p>
+            <p><strong>💵 Valor líquido a pagar:</strong> <span class="info">{{ "%.2f"|format(saque.valor_liquido) }} MZN</span></p>
+            
+            <div class="dados-cliente">
+                <h3>📋 Dados do Cliente:</h3>
+                <p><strong>👤 Usuário:</strong> {{ saque.usuario_nome }}</p>
+                <p><strong>📧 Email:</strong> {{ saque.usuario_email }}</p>
+                <p><strong>💳 Método:</strong> {{ saque.metodo }}</p>
+                <p><strong>📱 Conta/Destino:</strong> {{ saque.numero_conta }}</p>
+                {% if saque.email_paypal %}
+                    <p><strong>📧 Email PayPal:</strong> {{ saque.email_paypal }}</p>
+                {% endif %}
+                <p><strong>👤 Nome do titular:</strong> {{ saque.nome_titular }}</p>
+                <p><strong>📅 Data do pedido:</strong> {{ saque.data_pedido }}</p>
+            </div>
+            
+            <form method="POST">
+                <button type="submit" class="btn btn-success">✅ Confirmar Pagamento</button>
+                <a href="/admin_saques" class="btn btn-danger">❌ Cancelar</a>
+            </form>
+            {% else %}
+                <p>❌ Pedido de saque não encontrado!</p>
+                <a href="/admin_saques" class="btn btn-primary">← Voltar</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

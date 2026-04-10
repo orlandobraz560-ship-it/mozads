@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Administrador - Sistema VIP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 {
+            font-size: 24px;
+        }
+        .header h1 small {
+            font-size: 14px;
+            color: #e94560;
+        }
+        .btn-sair {
+            background: #e94560;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #0f3460;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .stat-card:hover {
+            transform: scale(1.02);
+            background: #e94560;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .menu-card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: white;
+            display: block;
+            text-align: center;
+        }
+        .menu-card:hover {
+            background: #e94560;
+            transform: translateY(-5px);
+        }
+        .menu-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .menu-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .menu-desc {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .bottom-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #16213e;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 16px;
+            max-width: 1200px;
+            margin: 0 auto;
+            border-radius: 20px 20px 0 0;
+        }
+        .bottom-item {
+            text-align: center;
+            text-decoration: none;
+            color: #999;
+            font-size: 12px;
+            padding: 8px;
+            border-radius: 10px;
+        }
+        .bottom-item.active {
+            color: #e94560;
+        }
+        .bottom-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+        .flash {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info { background: #e3f2fd; color: #1565c0; }
+        hr {
+            margin: 15px 0;
+            border: none;
+            border-top: 1px solid #0f3460;
+        }
+        .versao {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 20px;
+        }
+        .ultimos-pedidos {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .pedido-item {
+            padding: 10px;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .pedido-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👑 Painel do Administrador <small>Sistema VIP</small></h1>
+            <a href="/logout" class="btn-sair">🚪 Sair</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Estatísticas Rápidas -->
+        <div class="stats">
+            <div class="stat-card" onclick="window.location.href='/admin_usuarios'">
+                <div class="stat-number">{{ stats.total_usuarios or 0 }}</div>
+                <div class="stat-label">Total Usuários</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='/admin_depositos'">
+                <div class="stat-number">{{ stats.pendentes_deposito or 0 }}</div>
+                <div class="stat-label">Depósitos Pendentes</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='/admin_saques'">
+                <div class="stat-number">{{ stats.pendentes_saque or 0 }}</div>
+                <div class="stat-label">Saques Pendentes</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='/admin_usuarios'">
+                <div class="stat-number">{{ "%.0f"|format(stats.total_saldo_sistema or 0) }} MZN</div>
+                <div class="stat-label">Saldo em Sistema</div>
+            </div>
+        </div>
+
+        <!-- Menu de Gerenciamento - LINKS CORRIGIDOS -->
+        <div class="menu-grid">
+            <a href="/admin_depositos" class="menu-card">
+                <div class="menu-icon">💰</div>
+                <div class="menu-title">Depósitos</div>
+                <div class="menu-desc">Confirmar ou rejeitar pedidos de depósito</div>
+            </a>
+            <a href="/admin_saques" class="menu-card">
+                <div class="menu-icon">💸</div>
+                <div class="menu-title">Saques</div>
+                <div class="menu-desc">Processar pedidos de saque</div>
+            </a>
+            <a href="/admin_usuarios" class="menu-card">
+                <div class="menu-icon">👥</div>
+                <div class="menu-title">Usuários</div>
+                <div class="menu-desc">Gerenciar saldos e níveis</div>
+            </a>
+            <a href="/admin_tarefas" class="menu-card">
+                <div class="menu-icon">🎬</div>
+                <div class="menu-title">Tarefas</div>
+                <div class="menu-desc">Adicionar vídeos/imagens</div>
+            </a>
+            <a href="/admin_relatorios" class="menu-card">
+                <div class="menu-icon">📊</div>
+                <div class="menu-title">Relatórios</div>
+                <div class="menu-desc">Ver histórico completo</div>
+            </a>
+            <a href="/admin_configuracoes" class="menu-card">
+                <div class="menu-icon">⚙️</div>
+                <div class="menu-title">Configurações</div>
+                <div class="menu-desc">Níveis, comissões, etc</div>
+            </a>
+        </div>
+
+        <!-- Últimos Pedidos -->
+        <div class="ultimos-pedidos">
+            <h3 style="margin-bottom: 15px;">📋 Últimos Pedidos</h3>
+            {% if ultimos_pedidos %}
+                {% for pedido in ultimos_pedidos %}
+                    <div class="pedido-item">
+                        <strong>{{ pedido.nome }}</strong> - {{ pedido.valor }} MZN 
+                        {% if pedido.status == 'pendente' %}
+                            <span style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 5px; font-size: 11px;">{{ pedido.status }}</span>
+                        {% elif pedido.status == 'confirmado' %}
+                            <span style="background: #4caf50; color: white; padding: 2px 8px; border-radius: 5px; font-size: 11px;">{{ pedido.status }}</span>
+                        {% else %}
+                            <span style="background: #f44336; color: white; padding: 2px 8px; border-radius: 5px; font-size: 11px;">{{ pedido.status }}</span>
+                        {% endif %}
+                        <small style="float: right;">{{ pedido.data_pedido[:16] }}</small>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div style="padding: 20px; text-align: center; color: #888;">Nenhum pedido recente</div>
+            {% endif %}
+        </div>
+
+        <div class="versao">
+            <hr>
+            Versão 1.01 | © 2024 - Painel Administrativo
+        </div>
+    </div>
+
+    <!-- Menu inferior -->
+    <div class="bottom-menu">
+        <a href="/admin_painel" class="bottom-item active">
+            <div class="bottom-icon">🏠</div>
+            <div>Dashboard</div>
+        </a>
+        <a href="/admin_depositos" class="bottom-item">
+            <div class="bottom-icon">💰</div>
+            <div>Depósitos</div>
+        </a>
+        <a href="/admin_saques" class="bottom-item">
+            <div class="bottom-icon">💸</div>
+            <div>Saques</div>
+        </a>
+        <a href="/admin_usuarios" class="bottom-item">
+            <div class="bottom-icon">👥</div>
+            <div>Usuários</div>
+        </a>
+        <a href="/admin_tarefas" class="bottom-item">
+            <div class="bottom-icon">🎬</div>
+            <div>Tarefas</div>
+        </a>
+    </div>
+
+    <script>
+        // Atualizar estatísticas a cada 30 segundos
+        setInterval(function() {
+            fetch('/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    const stats = document.querySelectorAll('.stat-card');
+                    if (stats[0]) stats[0].querySelector('.stat-number').innerText = data.total_usuarios;
+                    if (stats[1]) stats[1].querySelector('.stat-number').innerText = data.pendentes_deposito;
+                    if (stats[2]) stats[2].querySelector('.stat-number').innerText = data.pendentes_saque;
+                    if (stats[3]) stats[3].querySelector('.stat-number').innerText = data.total_saldo_sistema + ' MZN';
+                });
+        }, 30000);
+    </script>
+</body>
+</html>

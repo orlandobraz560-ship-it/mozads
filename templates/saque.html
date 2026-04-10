@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saque - Sistema de Tarefas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .regras {
+            background: #fff3e0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .regra-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #ffe0b2;
+            font-size: 14px;
+            color: #666;
+        }
+        .regra-item:last-child {
+            border-bottom: none;
+        }
+        .regra-item strong {
+            color: #ff9800;
+        }
+        .saldo-disponivel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .saldo-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .saldo-valor {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+        .input-valor {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .metodo-pagamento {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metodo {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+            border: 2px solid #e0e0e0;
+            background: white;
+        }
+        .metodo.ativo {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            color: #2196f3;
+            font-weight: bold;
+        }
+        .btn-solicitar {
+            width: 100%;
+            padding: 15px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-solicitar:hover {
+            background: #45a049;
+        }
+        .btn-solicitar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .aviso {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #c62828;
+        }
+        .flash {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💸 Saque</h1>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="regras">
+                <div class="regra-item">
+                    📌 <strong>Mínimo para saque:</strong> MZN 100
+                </div>
+                <div class="regra-item">
+                    👑 <strong>Apenas usuários:</strong> VIP1 a VIP7 podem sacar
+                </div>
+                <div class="regra-item">
+                    ⏰ <strong>Processamento em até:</strong> 24 horas
+                </div>
+                <div class="regra-item">
+                    💰 <strong>Taxa de saque:</strong> 10% (Mínimo MZN 10)
+                </div>
+            </div>
+
+            <div class="saldo-disponivel">
+                <div class="saldo-label">Saldo disponível para saque</div>
+                <div class="saldo-valor">{{ "%.2f"|format(saldo_total) }} MZN</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    Principal: {{ "%.2f"|format(saldo_principal) }} MZN | 
+                    Comissão: {{ "%.2f"|format(saldo_comissao) }} MZN
+                </div>
+            </div>
+
+            <form method="POST" id="formSaque">
+                <div class="form-group">
+                    <label>💰 Valor do saque (MZN)</label>
+                    <input type="number" name="valor" id="valorSaque" class="input-valor" 
+                           step="10" min="100" max="{{ saldo_total }}" 
+                           placeholder="0.00" required>
+                    <div id="taxaInfo" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
+                </div>
+
+                <label>📱 Método de pagamento</label>
+                <div class="metodo-pagamento">
+                    <div class="metodo ativo" data-metodo="mpesa" onclick="selecionarMetodo('mpesa')">
+                        📱 M-Pesa
+                    </div>
+                    <div class="metodo" data-metodo="emola" onclick="selecionarMetodo('emola')">
+                        💳 e-Mola
+                    </div>
+                    <div class="metodo" data-metodo="paypal" onclick="selecionarMetodo('paypal')">
+                        🌐 PayPal
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="labelNumero">📞 Número M-Pesa</label>
+                    <input type="text" name="numero_conta" id="numeroConta" 
+                           placeholder="Ex: 84 000 0000" required>
+                </div>
+
+                <div class="form-group" id="emailPaypalGroup" style="display: none;">
+                    <label>📧 Email PayPal</label>
+                    <input type="email" name="email_paypal" id="emailPaypal" 
+                           placeholder="seu@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>👤 Nome do titular</label>
+                    <input type="text" name="nome_titular" placeholder="Nome completo" required>
+                </div>
+
+                {% if not pode_sacar %}
+                <div class="aviso">
+                    ⚠️ Você precisa ser VIP1 ou superior para sacar. 
+                    Faça um depósito para ativar seu nível.
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn-solicitar" {% if not pode_sacar or saldo_total < 100 %}disabled{% endif %}>
+                    ↓ Solicitar Saque
+                </button>
+            </form>
+
+            <a href="/painel" style="display: block; text-align: center; margin-top: 20px; color: #666; text-decoration: none;">← Voltar ao painel</a>
+        </div>
+    </div>
+
+    <script>
+        const saldoTotal = { saldo_total };
+        
+        function selecionarMetodo(metodo) {
+            // Atualizar visual
+            document.querySelectorAll('.metodo').forEach(item => {
+                item.classList.remove('ativo');
+            });
+            event.currentTarget.classList.add('ativo');
+            
+            // Atualizar campos baseado no método
+            const labelNumero = document.getElementById('labelNumero');
+            const numeroConta = document.getElementById('numeroConta');
+            const emailGroup = document.getElementById('emailPaypalGroup');
+            const emailInput = document.getElementById('emailPaypal');
+            
+            if (metodo === 'mpesa') {
+                labelNumero.innerHTML = '📞 Número M-Pesa';
+                numeroConta.placeholder = 'Ex: 84 000 0000';
+                numeroConta.required = true;
+                emailGroup.style.display = 'none';
+                emailInput.required = false;
+            } else if (metodo === 'emola') {
+                labelNumero.innerHTML = '📞 Número e-Mola';
+                numeroConta.placeholder = 'Ex: 84 000 0000';
+                numeroConta.required = true;
+                emailGroup.style.display = 'none';
+                emailInput.required = false;
+            } else if (metodo === 'paypal') {
+                labelNumero.innerHTML = '📧 Email PayPal';
+                numeroConta.placeholder = 'seu@email.com';
+                numeroConta.required = true;
+                emailGroup.style.display = 'block';
+                emailInput.required = true;
+            }
+        }
+
+        // Calcular taxa e valor líquido
+        const valorInput = document.getElementById('valorSaque');
+        const taxaInfo = document.getElementById('taxaInfo');
+        
+        valorInput.addEventListener('input', function() {
+            let valor = parseFloat(this.value);
+            if (isNaN(valor)) valor = 0;
+            
+            const taxa = Math.max(valor * 0.10, 10);
+            const liquido = valor - taxa;
+            
+            if (valor > 0) {
+                taxaInfo.innerHTML = `💸 Taxa (10%): ${taxa.toFixed(2)} MZN | Valor líquido: ${liquido.toFixed(2)} MZN`;
+                if (valor > saldoTotal) {
+                    taxaInfo.innerHTML += `<br><span style="color: #f44336;">⚠️ Saldo insuficiente! Máximo: ${saldoTotal.toFixed(2)} MZN</span>`;
+                }
+            } else {
+                taxaInfo.innerHTML = '';
+            }
+        });
+    </script>
+</body>
+</html>

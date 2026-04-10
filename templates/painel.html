@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Minha Carteira - {{ usuario.nome }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 16px; padding-bottom: 80px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .bonus-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .bonus-valor { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .perfil { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .perfil-nome { font-size: 18px; font-weight: bold; }
+        .perfil-vip { background: #ff9800; padding: 4px 12px; border-radius: 20px; font-size: 12px; color: white; }
+        .vip-none { background: #f44336; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; display: inline-block; }
+        .saldos { display: flex; gap: 15px; margin: 20px 0; }
+        .saldo-item { flex: 1; text-align: center; }
+        .saldo-valor { font-size: 22px; font-weight: bold; }
+        .saldo-principal { color: #2e7d32; }
+        .saldo-comissao { color: #ff9800; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 15px 0; }
+        .stat-item { text-align: center; padding: 10px; background: #f8f9fa; border-radius: 12px; }
+        .stat-valor { font-size: 18px; font-weight: bold; }
+        .stat-label { font-size: 11px; color: #666; }
+        .menu-rapido { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 10px; }
+        .menu-item { background: white; border-radius: 16px; padding: 12px 8px; text-align: center; text-decoration: none; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; display: block; }
+        .menu-icon { font-size: 28px; margin-bottom: 6px; }
+        .menu-label { font-size: 11px; font-weight: 500; }
+        .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
+        .bottom-item.active { color: #667eea; background: #f0f2f5; }
+        .bottom-icon { font-size: 22px; margin-bottom: 4px; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        hr { margin: 15px 0; border: none; border-top: 1px solid #eee; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="bonus-card">
+            <div class="bonus-titulo">🥳DAMOS LHE AS BOAS-VINDAS🥳</div>
+            <div class="bonus-valor">🇲🇿MOZ_ADS🇲🇿</div>
+        </div>
+
+        <div class="card">
+            <div class="perfil">
+                <div><div class="perfil-nome">{{ usuario.nome }}</div>Código: <strong>{{ usuario.codigo_convite }}</strong></div>
+                <div>{% if usuario.nivel >= 1 %}<span class="perfil-vip">VIP {{ usuario.nivel_nome }}</span>{% else %}<span class="vip-none">VIP: NONE</span>{% endif %}</div>
+            </div>
+            <div class="saldos">
+                <div class="saldo-item"><div class="saldo-label">Saldo principal</div><div class="saldo-valor saldo-principal" id="saldo-principal">{{ "%.2f"|format(usuario.saldo_principal) }} MZN</div></div>
+                <div class="saldo-item"><div class="saldo-label">Comissão</div><div class="saldo-valor saldo-comissao" id="saldo-comissao">{{ "%.2f"|format(usuario.saldo_comissao) }} MZN</div></div>
+            </div>
+            <div style="text-align: center;"><span style="font-size: 14px; color: #666;">Total disponível: </span><strong style="font-size: 20px; color: #2e7d32;" id="saldo-total">{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</strong></div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">📊 RESUMO DE GANHOS</h3>
+            <div class="stats-grid">
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_ontem or 0) }} MZN</div><div class="stat-label">GANHOS ONTEM</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_hoje or 0) }} MZN</div><div class="stat-label">GANHOS HOJE</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_semana or 0) }} MZN</div><div class="stat-label">ESTA SEMANA</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_mes or 0) }} MZN</div><div class="stat-label">ESTE MÊS</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_total or 0) }} MZN</div><div class="stat-label">RECEITA TOTAL</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ total_convidados }}</div><div class="stat-label">INDICADOS</div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 12px;">⚡ ACESSO RÁPIDO</h3>
+            <div class="menu-rapido">
+                <a href="/tabela_rendimentos" class="menu-item"><div class="menu-icon">📊</div><div class="menu-label">Lucros</div></a>
+                <a href="/saque" class="menu-item"><div class="menu-icon">💸</div><div class="menu-label">Levantamento</div></a>
+                <a href="/depositar" class="menu-item"><div class="menu-icon">💰</div><div class="menu-label">Depósito</div></a>
+                <a href="#" class="menu-item" onclick="mostrarToast('Relatório em desenvolvimento', 'info')"><div class="menu-icon">📋</div><div class="menu-label">Relatório</div></a>
+                <a href="/tarefas" class="menu-item"><div class="menu-icon">✅</div><div class="menu-label">Tarefa</div></a>
+                <a href="/vip" class="menu-item"><div class="menu-icon">👑</div><div class="menu-label">VIP</div></a>
+                <a href="#" class="menu-item" onclick="mostrarToast('Equipe em desenvolvimento', 'info')"><div class="menu-icon">👥</div><div class="menu-label">Equipe</div></a>
+                <a href="/convidar" class="menu-item"><div class="menu-icon">🔗</div><div class="menu-label">Convidar</div></a>
+                <a href="#" class="menu-item" onclick="mostrarToast('Perfil em desenvolvimento', 'info')"><div class="menu-icon">👤</div><div class="menu-label">Perfil</div></a>
+                <a href="#" class="menu-item" onclick="mostrarToast('Lucky em desenvolvimento', 'info')"><div class="menu-icon">🍀</div><div class="menu-label">Lucky</div></a>
+                <a href="/depositar" class="menu-item"><div class="menu-icon">📈</div><div class="menu-label">Investimentos</div></a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; gap: 12px;">
+                <a href="https://chat.whatsapp.com/BPsKDQclcG9J0E0J5glvC6?mode=gi_t" target="_blank" style="flex:1; background:#25D366; color:white; padding:14px; border-radius:12px; text-align:center; text-decoration:none;">💬 Grupo WhatsApp</a>
+                <a href="https://wa.me/258879267774?text=Olá" target="_blank" style="flex:1; background:#128C7E; color:white; padding:14px; border-radius:12px; text-align:center; text-decoration:none;">📞 Suporte 24h</a>
+            </div>
+            <hr><div style="text-align:center; font-size:11px; color:#999;">Versão 1.01 | © 2024</div>
+        </div>
+    </div>
+
+    <div class="bottom-menu">
+        <a href="/painel" class="bottom-item active"><div class="bottom-icon">🏠</div><div>Lar</div></a>
+        <a href="/tarefas" class="bottom-item"><div class="bottom-icon">✅</div><div>Tarefa</div></a>
+        <a href="/vip" class="bottom-item"><div class="bottom-icon">👑</div><div>VIP</div></a>
+        <a href="/depositar" class="bottom-item"><div class="bottom-icon">📈</div><div>Investimentos</div></a>
+        <a href="/convidar" class="bottom-item"><div class="bottom-icon">👤</div><div>Meu</div></a>
+    </div>
+
+    <script>
+        // Função para copiar link de convite
+        function copiarLinkConvite() { 
+            const link = window.location.origin + '/cadastro?ref={{ usuario.codigo_convite }}'; 
+            navigator.clipboard.writeText(link); 
+            mostrarToast('Link copiado!', 'sucesso');
+        }
+        
+        // Função para mostrar níveis (fallback caso o script.js não carregue)
+        function mostrarNiveis() {
+            const modal = document.createElement('div'); 
+            modal.style.position='fixed'; 
+            modal.style.top='0'; 
+            modal.style.left='0'; 
+            modal.style.right='0'; 
+            modal.style.bottom='0'; 
+            modal.style.background='rgba(0,0,0,0.8)'; 
+            modal.style.zIndex='1000'; 
+            modal.style.display='flex'; 
+            modal.style.alignItems='center'; 
+            modal.style.justifyContent='center'; 
+            modal.style.padding='20px'; 
+            modal.onclick=function(){this.remove();};
+            
+            modal.innerHTML = `<div style="background:white; border-radius:20px; max-width:400px; width:100%; padding:20px;" onclick="event.stopPropagation()">
+                <span style="float:right; font-size:24px; cursor:pointer; color:#999;" onclick="this.closest('div').parentElement.remove()">&times;</span>
+                <h2 style="text-align:center;">👑 NÍVEIS VIP</h2>
+                <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>⭐ Estagiário</strong><br>Investimento: 0 MZN<br>Ganho diário: 0 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 1</strong><br>Investimento: 750 MZN<br>Ganho diário: 25 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 2</strong><br>Investimento: 2.400 MZN<br>Ganho diário: 80 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 3</strong><br>Investimento: 7.200 MZN<br>Ganho diário: 240 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 4</strong><br>Investimento: 15.000 MZN<br>Ganho diário: 500 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 5</strong><br>Investimento: 30.000 MZN<br>Ganho diário: 1.050 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 6</strong><br>Investimento: 60.000 MZN<br>Ganho diário: 2.200 MZN</div>
+                <div style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; border-radius:12px; padding:15px; margin-bottom:10px;"><strong>👑 VIP 7</strong><br>Investimento: 120.000 MZN<br>Ganho diário: 4.500 MZN</div>
+                <hr style="margin:15px 0;">
+                <div style="text-align:center;"><a href="/depositar" style="background:#2196f3; color:white; padding:10px 20px; border-radius:25px; text-decoration:none;">💰 Investir agora</a></div>
+            </div>`;
+            document.body.appendChild(modal);
+        }
+
+        // Iniciar atualização automática do saldo
+        if (typeof atualizarSaldo === 'function') {
+            setInterval(atualizarSaldo, 30000);
+        }
+    </script>
+</body>
+</html>

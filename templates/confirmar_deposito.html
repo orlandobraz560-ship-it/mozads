@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmar Depósito - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-primary { background: #2196f3; color: white; }
+        .info { color: #ff9800; }
+        .dados-deposito {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>✅ Confirmar Depósito</h2>
+            
+            <div class="dados-deposito">
+                <p><strong>💰 Valor:</strong> {{ pedido.valor }} MZN</p>
+                <p><strong>👤 Usuário:</strong> {{ pedido.nome }}</p>
+                <p><strong>📧 Email:</strong> {{ pedido.email }}</p>
+                <p><strong>📱 Telefone:</strong> {{ pedido.telefone or 'Não informado' }}</p>
+                <p><strong>📱 Número usado:</strong> {{ pedido.numero_pagamento }}</p>
+                <p><strong>👤 Nome do titular:</strong> {{ pedido.nome_titular }}</p>
+                <p><strong>💳 Método:</strong> {{ pedido.metodo_pagamento or 'M-Pesa' }}</p>
+                <p><strong>📅 Data:</strong> {{ pedido.data_pedido }}</p>
+            </div>
+            
+            {% if pedido.comprovante %}
+                <p>Comprovante: <a href="/{{ pedido.comprovante }}" target="_blank" class="btn-primary">📸 Ver Comprovante</a></p>
+            {% endif %}
+            
+            <form method="POST">
+                <button type="submit" class="btn btn-success">✅ Confirmar Depósito</button>
+                <a href="/admin_depositos" class="btn btn-danger">❌ Cancelar</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

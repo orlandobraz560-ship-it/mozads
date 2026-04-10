@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Saques - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        .btn-success { background: #4caf50; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .pendente { background: #ff9800; color: white; padding: 3px 8px; border-radius: 5px; font-size: 11px; display: inline-block; }
+        .pago { background: #4caf50; color: white; padding: 3px 8px; border-radius: 5px; font-size: 11px; display: inline-block; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>💸 Gerenciar Saques</h2>
+            <div>
+                <a href="/admin_painel" class="btn">← Dashboard</a>
+                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
+                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
+                <a href="/admin_tarefas" class="btn">🎬 Tarefas</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+            <h3>📋 Pedidos de Saque Pendentes</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Valor</th>
+                            <th>Taxa</th>
+                            <th>Líquido</th>
+                            <th>Método</th>
+                            <th>Conta</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for saque in pendentes %}
+                        <tr>
+                            <td>{{ saque.id }}</td>
+                            <td>{{ saque.usuario_nome }}<br><small>{{ saque.usuario_email }}</small></td>
+                            <td><strong>{{ saque.valor }} MZN</strong></td>
+                            <td>{{ saque.taxa }} MZN</td>
+                            <td style="color:#4caf50;">{{ "%.2f"|format(saque.valor_liquido) }} MZN</td>
+                            <td>{{ saque.metodo }}</td>
+                            <td>{{ saque.numero_conta }}</td>
+                            <td><small>{{ saque.data_pedido[:16] }}</small></td>
+                            <td>
+                                <!-- Na lista de saques, o link deve estar correto -->
+                                 <a href="/confirmar_saque/{{ saque.id }}" class="btn-success" onclick="return confirm('Confirmar pagamento do saque de {{ saque.valor }} MZN?')">✅ Pagar</a>
+                                 <a href="/rejeitar_saque/{{ saque.id }}" class="btn-danger" onclick="return confirm('Rejeitar saque?')">❌ Rejeitar</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9" style="text-align: center;">✅ Nenhum pedido de saque pendente</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📋 Histórico de Saques</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for hist in historico %}
+                        <tr>
+                            <td>{{ hist.id }}</td>
+                            <td>{{ hist.usuario_nome }}</td>
+                            <td>{{ hist.valor }} MZN</td>
+                            <td><span class="pago">{{ hist.status }}</span></td>
+                            <td><small>{{ hist.data_pedido[:16] }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

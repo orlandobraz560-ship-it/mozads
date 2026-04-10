@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        input, select { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        .nivel-item {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        h3 { margin-bottom: 15px; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>⚙️ Configurações do Sistema</h2>
+            <a href="/admin_painel" class="btn">← Voltar</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+            <h3>👑 Níveis VIP</h3>
+            {% for nivel in niveis %}
+            <div class="nivel-item">
+                <div>
+                    <strong>{{ nivel.nome }}</strong><br>
+                    <small>💰 Investimento: {{ nivel.investimento }} MZN</small><br>
+                    <small>📈 Ganho diário: {{ nivel.ganho_diario }} MZN</small>
+                </div>
+                <button class="btn-success" style="width: auto; padding: 8px 15px;" onclick="alert('Editar nível em desenvolvimento')">✏️ Editar</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card">
+            <h3>📞 Contatos de Suporte</h3>
+            <form method="POST">
+                <input type="text" name="whatsapp" placeholder="Número WhatsApp" value="879267774">
+                <input type="text" name="grupo" placeholder="Link do Grupo WhatsApp" value="https://chat.whatsapp.com/DwPuPeBzKAfEXz6efHtIVP">
+                <button type="submit" class="btn-success">💾 Salvar Configurações</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>ℹ️ Informações do Sistema</h3>
+            <p><strong>Versão:</strong> 1.01</p>
+            <p><strong>Desenvolvido por:</strong> MOZ_ADS</p>
+            <p><strong>Suporte:</strong> 879267774</p>
+        </div>
+    </div>
+</body>
+</html>

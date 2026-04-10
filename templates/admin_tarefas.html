@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Tarefas - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        input, select { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🎬 Gerenciar Tarefas</h2>
+            <div>
+                <a href="/admin_painel" class="btn">← Dashboard</a>
+                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
+                <a href="/admin_saques" class="btn">💸 Saques</a>
+                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+    <h3>➕ Adicionar Nova Tarefa</h3>
+    <form method="POST" action="/adicionar_tarefa_multimidia">
+        <div class="form-grid">
+            <input type="text" name="titulo" placeholder="Título" required>
+            <input type="text" name="descricao" placeholder="Descrição">
+            
+            <select name="tipo" required>
+                <option value="video">🎥 Vídeo (YouTube)</option>
+                <option value="imagem">🖼️ Imagem</option>
+            </select>
+            
+            <!-- CAMPO NOVO: Nível Requerido -->
+            <select name="nivel_requerido" required>
+                <option value="1">👑 VIP 1</option>
+                <option value="2">👑 VIP 2</option>
+                <option value="3">👑 VIP 3</option>
+                <option value="4">👑 VIP 4</option>
+                <option value="5">👑 VIP 5</option>
+                <option value="6">👑 VIP 6</option>
+                <option value="7">👑 VIP 7</option>
+            </select>
+            
+            <input type="text" name="url" placeholder="URL (link do YouTube ou imagem)" required>
+            <input type="number" name="recompensa" placeholder="Recompensa (MZN)" step="0.01" required>
+            <input type="number" name="duracao" placeholder="Duração (segundos)" value="30">
+            <button type="submit" class="btn-success" style="padding: 10px;">➕ Adicionar Tarefa</button>
+        </div>
+    </form>
+</div>
+        <div class="card">
+            <h3>📋 Tarefas Cadastradas</h3>
+            {% if tarefas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Recompensa</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tarefa in tarefas %}
+                    <tr>
+                        <td>{{ tarefa.id }}</td>
+                        <td>{{ tarefa.titulo }}</td>
+                        <td>{% if tarefa.tipo == 'video' %}🎥 Vídeo{% else %}🖼️ Imagem{% endif %}</td>
+                        <td>{{ tarefa.recompensa }} MZN</td>
+                        <td>
+                            <a href="/remover_tarefa_multimidia/{{ tarefa.id }}" class="btn-danger" onclick="return confirm('Remover tarefa?')">❌ Remover</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <p style="text-align: center; padding: 40px;">📭 Nenhuma tarefa cadastrada</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

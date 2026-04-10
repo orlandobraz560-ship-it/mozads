@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajustar Saldo - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .btn-warning { background: #ff9800; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; }
+        input, select { padding: 12px; border-radius: 8px; border: none; width: 100%; margin-bottom: 15px; font-size: 14px; }
+        label { display: block; margin-bottom: 5px; color: #aaa; font-size: 12px; }
+        .saldo-atual { background: #16213e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>💰 Ajustar Saldo</h2>
+            <a href="/admin_usuarios" class="btn">← Voltar</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+            <h3>👤 Usuário: {{ usuario.nome }}</h3>
+            <p>Email: {{ usuario.email }}</p>
+            
+            <div class="saldo-atual">
+                <p><strong>💰 Saldo Principal:</strong> {{ "%.2f"|format(usuario.saldo_principal) }} MZN</p>
+                <p><strong>⭐ Saldo Comissão:</strong> {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</p>
+                <p><strong>📊 Total:</strong> {{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</p>
+            </div>
+
+            <form method="POST">
+                <label>Tipo de Saldo</label>
+                <select name="tipo_saldo" required>
+                    <option value="saldo_principal">💰 Saldo Principal</option>
+                    <option value="saldo_comissao">⭐ Saldo Comissão</option>
+                </select>
+
+                <label>Operação</label>
+                <select name="operacao" required>
+                    <option value="adicionar">➕ Adicionar</option>
+                    <option value="remover">➖ Remover</option>
+                </select>
+
+                <label>Valor (MZN)</label>
+                <input type="tel" name="valor" placeholder="0.00" step="0.01" required>
+
+                <button type="submit" class="btn-warning">💾 Aplicar Ajuste</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

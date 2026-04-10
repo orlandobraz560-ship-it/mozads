@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Depósitos - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        .btn-success { background: #4caf50; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .btn-primary { background: #2196f3; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .pendente { background: #ff9800; color: white; padding: 3px 8px; border-radius: 5px; font-size: 11px; display: inline-block; }
+        .confirmado { background: #4caf50; color: white; padding: 3px 8px; border-radius: 5px; font-size: 11px; display: inline-block; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>💰 Gerenciar Depósitos</h2>
+            <div>
+                <a href="/admin_painel" class="btn">← Dashboard</a>
+                <a href="/admin_saques" class="btn">💸 Saques</a>
+                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
+                <a href="/admin_tarefas" class="btn">🎬 Tarefas</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="card">
+            <h3>📋 Pedidos de Depósito Pendentes ({{ pedidos|length }})</h3>
+            {% if pedidos|length > 0 %}
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuário</th>
+                            <th>Telefone</th>
+                            <th>Valor</th>
+                            <th>Método</th>
+                            <th>Data</th>
+                            <th>Comprovante</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pedido in pedidos %}
+                        <tr>
+                            <td>{{ pedido.id }}</td>
+                            <td>{{ pedido.nome }}<br><small>{{ pedido.email }}</small></td>
+                            <td>{{ pedido.telefone or '-' }}</td>
+                            <td><strong>{{ pedido.valor }} MZN</strong></td>
+                            <td>{{ pedido.metodo_pagamento or 'M-Pesa' }}</td>
+                            <td><small>{{ pedido.data_pedido[:16] }}</small></td>
+                            <td>
+                                {% if pedido.comprovante %}
+                                    <a href="/{{ pedido.comprovante }}" target="_blank" class="btn-primary">📸 Ver</a>
+                                {% else %}
+                                    <span class="pendente">Sem arquivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="/confirmar_deposito/{{ pedido.id }}" class="btn-success" onclick="return confirm('Confirmar depósito de {{ pedido.valor }} MZN?')">✅ Confirmar</a>
+                                <a href="/rejeitar_deposito/{{ pedido.id }}" class="btn-danger" onclick="return confirm('Rejeitar depósito?')">❌ Rejeitar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div style="text-align: center; padding: 40px;">
+                    <p>✅ Nenhum pedido de depósito pendente</p>
+                    <p style="font-size: 12px; margin-top: 10px;">Quando um usuário fizer um depósito, aparecerá aqui.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h3>📋 Histórico de Depósitos</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for hist in historico %}
+                        <tr>
+                            <td>{{ hist.id }}</td>
+                            <td>{{ hist.nome }}</td>
+                            <td>{{ hist.valor }} MZN</td>
+                            <td>{% if hist.status == 'confirmado' %}<span class="confirmado">{{ hist.status }}</span>{% else %}<span class="pendente">{{ hist.status }}</span>{% endif %}</td>
+                            <td><small>{{ hist.data_pedido[:16] }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

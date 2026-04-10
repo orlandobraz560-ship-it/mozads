@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>📊 Relatórios do Sistema</h2>
+            <a href="/admin_painel" class="btn">← Voltar</a>
+        </div>
+
+        <div class="card">
+            <h3>📋 Histórico de Depósitos</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for deposito in depositos %}
+                        <tr>
+                            <td>{{ deposito.id }}</td>
+                            <td>{{ deposito.nome }}</td>
+                            <td>{{ deposito.valor }} MZN</td>
+                            <td>{{ deposito.status }}</td>
+                            <td>{{ deposito.data_pedido[:16] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align: center;">Nenhum depósito encontrado</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>💸 Histórico de Saques</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for saque in saques %}
+                        <tr>
+                            <td>{{ saque.id }}</td>
+                            <td>{{ saque.usuario_nome }}</td>
+                            <td>{{ saque.valor }} MZN</td>
+                            <td>{{ saque.status }}</td>
+                            <td>{{ saque.data_pedido[:16] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align: center;">Nenhum saque encontrado</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Tarefas - {{ usuario.nome }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 16px; padding-bottom: 80px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .saldo-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .saldo-valor { font-size: 28px; font-weight: bold; color: #2e7d32; }
+        
+        /* Aviso de Domingo */
+        .domingo-aviso { background: #ff9800; color: white; padding: 15px; border-radius: 16px; text-align: center; margin-bottom: 16px; }
+        
+        /* Progresso Diário */
+        .progresso-diario { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: center; color: white; }
+        .progresso-diario .limite { font-size: 32px; font-weight: bold; }
+        .progresso-bar { background: rgba(255,255,255,0.3); border-radius: 10px; height: 10px; margin-top: 10px; overflow: hidden; }
+        .progresso-fill { background: white; height: 100%; border-radius: 10px; transition: width 0.3s; }
+        
+        /* Níveis VIP */
+        .niveis-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .nivel-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .nivel-card.locked { opacity: 0.5; filter: grayscale(0.3); cursor: not-allowed; }
+        .nivel-card.active { transform: scale(1.05); box-shadow: 0 5px 20px rgba(0,0,0,0.3); border: 2px solid white; }
+        .nivel-nome { font-size: 18px; font-weight: bold; }
+        .nivel-progresso { font-size: 11px; margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 3px; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4caf50; border-radius: 2px; transition: width 0.3s; }
+        
+        .btn-tarefas { background: linear-gradient(135deg, #2196f3 0%, #21d4fd 100%); color: white; border: none; border-radius: 30px; padding: 16px; font-size: 18px; font-weight: bold; width: 100%; margin-bottom: 20px; cursor: pointer; transition: all 0.3s; }
+        .btn-tarefas:active { transform: scale(0.98); }
+        .btn-tarefas:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Modal */
+        .modal-tarefas { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content-tarefas { background: white; border-radius: 20px; max-width: 500px; width: 100%; max-height: 80%; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .close-modal { font-size: 28px; cursor: pointer; color: #999; }
+        .tarefa-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
+        .tarefa-info h4 { font-size: 16px; margin-bottom: 4px; }
+        .tarefa-info p { font-size: 12px; color: #666; }
+        .tarefa-recompensa { color: #4caf50; font-weight: bold; }
+        .btn-assistir { background: #2196f3; color: white; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .sem-tarefas { text-align: center; padding: 40px; color: #999; }
+        
+        .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+        .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
+        .bottom-item.active { color: #667eea; background: #f0f2f5; }
+        .bottom-icon { font-size: 22px; margin-bottom: 4px; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info { background: #e3f2fd; color: #1565c0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="header">
+            <h1>🎬 Tarefas</h1>
+            <p>Assista anúncios e ganhe dinheiro!</p>
+        </div>
+
+        <!-- Aviso de Domingo -->
+        {% if is_domingo %}
+        <div class="domingo-aviso">
+            🙏 DOMINGO É DIA DE DESCANSO! 🙏<br>
+            Volte amanhã para fazer suas tarefas.
+        </div>
+        {% endif %}
+
+        <div class="saldo-card">
+            <div>💰 Seu Saldo</div>
+            <div class="saldo-valor" id="saldo-total">{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</div>
+        </div>
+
+        <!-- Progresso Diário -->
+        <div class="progresso-diario">
+            <div>📅 TAREFAS DE HOJE</div>
+            <div class="limite">{{ tarefas_feitas_hoje }}/{{ limite_diario }}</div>
+            <div class="progresso-bar">
+                <div class="progresso-fill" style="width: {{ (tarefas_feitas_hoje / limite_diario * 100) if limite_diario > 0 else 0 }}%"></div>
+            </div>
+            {% if limite_diario == 0 and not is_domingo %}
+                <div style="font-size: 12px; margin-top: 8px;">⭐ Faça upgrade para VIP para fazer tarefas!</div>
+            {% elif is_domingo %}
+                <div style="font-size: 12px; margin-top: 8px;">🔒 Volte amanhã!</div>
+            {% else %}
+                <div style="font-size: 12px; margin-top: 8px;">Você pode fazer até {{ limite_diario }} tarefas por dia</div>
+            {% endif %}
+        </div>
+
+        <!-- 7 Quadrados VIP -->
+        <div class="niveis-grid">
+            {% for nivel in niveis %}
+            <div class="nivel-card {% if nivel.id > usuario.nivel %}locked{% endif %} {% if nivel.id == usuario.nivel %}active{% endif %}" 
+                 onclick="{% if nivel.id <= usuario.nivel %}selecionarNivel({{ nivel.id }}){% else %}mostrarToast('Desbloqueie o {{ nivel.nome }} fazendo upgrade!', 'erro'){% endif %}">
+                <div class="nivel-nome">{{ nivel.nome }}</div>
+                <div class="nivel-progresso">
+                    {% set tarefas_feitas = progresso[nivel.id|string]['feitas'] if progresso[nivel.id|string] else 0 %}
+                    {% set tarefas_total = progresso[nivel.id|string]['total'] if progresso[nivel.id|string] else 0 %}
+                    {{ tarefas_feitas }}/{{ tarefas_total }}
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (tarefas_feitas / tarefas_total * 100) if tarefas_total > 0 else 0 }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botão Fazer Tarefas -->
+        <button class="btn-tarefas" id="btnFazerTarefas" 
+            onclick="abrirModalTarefas()"
+            {% if is_domingo or limite_diario == 0 or tarefas_feitas_hoje >= limite_diario %}disabled{% endif %}>
+            {% if is_domingo %}
+                🔒 DOMINGO - SEM TAREFAS
+            {% elif tarefas_feitas_hoje >= limite_diario and limite_diario > 0 %}
+                ✅ VOCÊ JÁ FEZ TODAS AS TAREFAS DE HOJE
+            {% elif limite_diario == 0 %}
+                ⭐ FAÇA UPGRADE PARA FAZER TAREFAS
+            {% else %}
+                🎬 FAZER TAREFAS ({{ tarefas_feitas_hoje }}/{{ limite_diario }})
+            {% endif %}
+        </button>
+
+        <div class="bottom-menu">
+            <a href="/painel" class="bottom-item"><div class="bottom-icon">🏠</div><div>Lar</div></a>
+            <a href="/tarefas" class="bottom-item active"><div class="bottom-icon">✅</div><div>Tarefa</div></a>
+            <a href="/vip" class="bottom-item"><div class="bottom-icon">👑</div><div>VIP</div></a>
+            <a href="/depositar" class="bottom-item"><div class="bottom-icon">📈</div><div>Investimentos</div></a>
+            <a href="/convidar" class="bottom-item"><div class="bottom-icon">👤</div><div>Meu</div></a>
+        </div>
+    </div>
+
+    <div id="modalTarefas" style="display: none;"></div>
+
+    <script>
+        let nivelSelecionado = {{ usuario.nivel }};
+        let tarefasDisponiveis = {{ tarefas_disponiveis|tojson }};
+        let tarefasFeitasHoje = {{ tarefas_feitas_hoje }};
+        let limiteDiario = {{ limite_diario }};
+
+        function selecionarNivel(nivel) {
+            nivelSelecionado = nivel;
+            document.querySelectorAll('.nivel-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            mostrarToast(`Nível ${nivel} selecionado`, 'info');
+        }
+
+        function abrirModalTarefas() {
+            if (tarefasFeitasHoje >= limiteDiario && limiteDiario > 0) {
+                mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
+                return;
+            }
+            
+            if (tarefasDisponiveis.length === 0) {
+                mostrarToast('Nenhuma tarefa disponível no momento!', 'erro');
+                return;
+            }
+
+            const modal = document.getElementById('modalTarefas');
+            modal.innerHTML = `
+                <div class="modal-tarefas" onclick="fecharModalTarefas(event)">
+                    <div class="modal-content-tarefas" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>🎬 Tarefas Disponíveis</h3>
+                            <span class="close-modal" onclick="fecharModalTarefas()">&times;</span>
+                        </div>
+                        <div id="listaTarefas">
+                            ${tarefasDisponiveis.map(tarefa => `
+                                <div class="tarefa-item" data-id="${tarefa.id}">
+                                    <div class="tarefa-info">
+                                        <h4>📺 ${tarefa.titulo}</h4>
+                                        <p>${tarefa.descricao || 'Assista ao anúncio e ganhe dinheiro!'}</p>
+                                        <span class="tarefa-recompensa">💰 +${tarefa.recompensa} MZN</span>
+                                    </div>
+                                    <div>
+                                        <button class="btn-assistir" onclick="assistirAnuncio(${tarefa.id}, ${tarefa.recompensa}, '${tarefa.url.replace(/'/g, "\\'")}')">▶️ Assistir</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+
+        function assistirAnuncio(tarefaId, recompensa, url) {
+            const modalVideo = document.createElement('div');
+            modalVideo.className = 'modal-video';
+            modalVideo.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:3000; display:flex; align-items:center; justify-content:center; padding:20px;';
+            modalVideo.innerHTML = `
+                <div style="background:white; border-radius:20px; max-width:400px; width:100%; overflow:hidden;">
+                    <div style="padding:10px; text-align:right;">
+                        <span style="cursor:pointer; font-size:24px; color:#999;" onclick="this.closest('.modal-video').remove()">&times;</span>
+                    </div>
+                    <div>
+                        <iframe src="${url}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen style="width:100%; height:300px;"></iframe>
+                    </div>
+                    <div style="text-align:center; padding:15px;">
+                        <div id="timerDisplay">Assista por 30 segundos</div>
+                        <div id="timerNum" style="font-size:48px; font-weight:bold; color:#2196f3;">30</div>
+                        <button id="confirmarBtn" style="background:#ccc; padding:10px 20px; border:none; border-radius:25px;" disabled>Aguarde...</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalVideo);
+            
+            let tempoRestante = 30;
+            const timerDisplay = document.getElementById('timerDisplay');
+            const timerNum = document.getElementById('timerNum');
+            const confirmarBtn = document.getElementById('confirmarBtn');
+            
+            const timerInterval = setInterval(() => {
+                tempoRestante--;
+                if (timerDisplay) timerDisplay.innerText = `Assista por ${tempoRestante} segundos`;
+                if (timerNum) timerNum.innerText = tempoRestante;
+                
+                if (tempoRestante <= 0) {
+                    clearInterval(timerInterval);
+                    if (confirmarBtn) {
+                        confirmarBtn.disabled = false;
+                        confirmarBtn.style.background = '#4caf50';
+                        confirmarBtn.innerHTML = `✅ Confirmar e Ganhar ${recompensa} MZN`;
+                        confirmarBtn.onclick = () => confirmarGanho(tarefaId, recompensa, modalVideo);
+                    }
+                }
+            }, 1000);
+        }
+
+        function confirmarGanho(tarefaId, recompensa, modalVideo) {
+            fetch('/assistir_tarefa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tarefa_id: tarefaId, recompensa: recompensa })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    if (modalVideo) modalVideo.remove();
+                    fecharModalTarefas();
+                    mostrarToast(`✅ Você ganhou ${recompensa} MZN!`, 'sucesso');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    mostrarToast(`❌ ${data.erro}`, 'erro');
+                    if (modalVideo) modalVideo.remove();
+                }
+            })
+            .catch(error => {
+                mostrarToast('❌ Erro de conexão', 'erro');
+                if (modalVideo) modalVideo.remove();
+            });
+        }
+
+        function fecharModalTarefas(event) {
+            const modal = document.getElementById('modalTarefas');
+            modal.style.display = 'none';
+            modal.innerHTML = '';
+        }
+
+        function mostrarToast(mensagem, tipo) {
+            const cores = { sucesso: '#4caf50', erro: '#f44336', info: '#2196f3' };
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:${cores[tipo] || '#333'}; color:white; padding:12px 24px; border-radius:10px; z-index:9999; animation:fadeInOut 3s;`;
+            toast.innerText = mensagem;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function atualizarSaldo() {
+            fetch('/api/saldo')
+                .then(response => response.json())
+                .then(data => {
+                    const saldoElement = document.getElementById('saldo-total');
+                    if (saldoElement) saldoElement.innerText = data.total.toFixed(2) + ' MZN';
+                })
+                .catch(error => console.error('Erro:', error));
+        }
+        setInterval(atualizarSaldo, 30000);
+
+        const style = document.createElement('style');
+        style.textContent = `@keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(20px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

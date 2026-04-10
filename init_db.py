@@ -31,29 +31,30 @@ CREATE TABLE IF NOT EXISTS usuarios (
 )
 ''')
 
-# Tabela de níveis (SEM ganho diário automático)
+# Tabela de níveis
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS niveis (
     id INTEGER PRIMARY KEY,
     nome TEXT,
     investimento REAL,
     tarefas_por_dia INTEGER DEFAULT 0,
+    recompensa_por_anuncio REAL DEFAULT 0,
     duracao_dias INTEGER DEFAULT 180
 )
 ''')
 
 # Inserir níveis padrão
 niveis = [
-    (0, 'Estagiário', 0, 2, 180),
-    (1, 'VIP 1', 600, 4, 180),
-    (2, 'VIP 2', 3000, 6, 180),
-    (3, 'VIP 3', 12000, 8, 180),
-    (4, 'VIP 4', 30000, 10, 180),
-    (5, 'VIP 5', 90000, 12, 180),
-    (6, 'VIP 6', 300000, 15, 180),
-    (7, 'VIP 7', 900000, 20, 180),
+    (0, 'Estagiário', 0, 2, 0, 180),
+    (1, 'VIP 1', 600, 4, 10, 180),
+    (2, 'VIP 2', 3000, 6, 15, 180),
+    (3, 'VIP 3', 12000, 8, 20, 180),
+    (4, 'VIP 4', 30000, 10, 25, 180),
+    (5, 'VIP 5', 90000, 12, 30, 180),
+    (6, 'VIP 6', 300000, 15, , 180),
+    (7, 'VIP 7', 900000, 20, 1500, 180),
 ]
-cursor.executemany('INSERT OR IGNORE INTO niveis (id, nome, investimento, tarefas_por_dia, duracao_dias) VALUES (?, ?, ?, ?, ?)', niveis)
+cursor.executemany('INSERT OR IGNORE INTO niveis (id, nome, investimento, tarefas_por_dia, recompensa_por_anuncio, duracao_dias) VALUES (?, ?, ?, ?, ?, ?)', niveis)
 
 # Tabela de pedidos de depósito
 cursor.execute('''
@@ -123,14 +124,6 @@ CREATE TABLE IF NOT EXISTS tarefas_assistidas (
 )
 ''')
 
-# Inserir tarefas padrão
-tarefas_padrao = [
-    ("Anúncio 1", "Assista ao anúncio e ganhe 30 MZN", "video", "https://www.youtube.com/embed/dQw4w9WgXcQ", 30, 30, 1),
-    ("Anúncio 2", "Assista ao anúncio e ganhe 50 MZN", "video", "https://www.youtube.com/embed/dQw4w9WgXcQ", 50, 30, 1),
-    ("Imagem Promocional", "Visualize a imagem e ganhe 20 MZN", "imagem", "https://placehold.co/400x300/667eea/white?text=Ganhe+dinheiro", 20, 10, 1),
-]
-cursor.executemany('INSERT OR IGNORE INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido) VALUES (?, ?, ?, ?, ?, ?, ?)', tarefas_padrao)
-
 # Criar admin padrão
 senha_hash = hashlib.sha256("admin123".encode()).hexdigest()
 codigo_admin = "ADMIN001"
@@ -155,5 +148,5 @@ print("   Senha: admin123")
 print("=" * 50)
 print("🎯 Níveis disponíveis:")
 for nivel in niveis:
-    print(f"   {nivel[1]}: Investimento {nivel[2]} MZN | {nivel[3]} tarefas/dia")
+    print(f"   {nivel[1]}: Investimento {nivel[2]} MZN | {nivel[3]} tarefas/dia | +{nivel[4]} MZN por anúncio")
 print("=" * 50)

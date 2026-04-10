@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adicionar Tarefa - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-primary { background: #2196f3; color: white; }
+        input, select, textarea {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .preview {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>🎬 Adicionar Tarefa (Vídeo/Imagem)</h2>
+            
+            <form method="POST" id="formTarefa">
+                <input type="text" name="titulo" placeholder="Título da tarefa" required>
+                <textarea name="descricao" placeholder="Descrição (opcional)" rows="2"></textarea>
+                
+                <select name="tipo" id="tipo" required onchange="mostrarPreview()">
+                    <option value="video">🎥 Vídeo (YouTube)</option>
+                    <option value="imagem">🖼️ Imagem</option>
+                </select>
+                
+                <input type="text" name="url" id="url" placeholder="URL (link do YouTube ou imagem)" required onchange="mostrarPreview()">
+                <input type="number" name="recompensa" placeholder="Recompensa (MZN)" step="0.01" required>
+                <input type="number" name="duracao" placeholder="Duração em segundos" value="30">
+                
+                <div class="preview" id="preview">
+                    <strong>Pré-visualização:</strong><br>
+                    <div id="previewContent">Preencha os campos acima</div>
+                </div>
+                
+                <button type="submit" class="btn btn-success">➕ Adicionar Tarefa</button>
+                <a href="/admin" class="btn btn-primary">← Voltar</a>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function mostrarPreview() {
+            const tipo = document.getElementById('tipo').value;
+            const url = document.getElementById('url').value;
+            const preview = document.getElementById('previewContent');
+            
+            if (tipo === 'video') {
+                if (url.includes('youtube') || url.includes('youtu.be')) {
+                    let videoId = url.split('/').pop().split('?')[0];
+                    preview.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="max-width:100%; border-radius:10px;">`;
+                } else {
+                    preview.innerHTML = `🎥 Vídeo: ${url}`;
+                }
+            } else {
+                preview.innerHTML = `<img src="${url}" style="max-width:100%; border-radius:10px;" onerror="this.src='https://placehold.co/400x200/667eea/white?text=Imagem+não+encontrada'">`;
+            }
+        }
+    </script>
+</body>
+</html>

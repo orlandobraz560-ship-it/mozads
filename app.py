@@ -454,6 +454,63 @@ def convidar():
     conn.close()
     return render_template('convidar.html', usuario=usuario, convidados=convidados, total_convidados=len(convidados))
 
+# ==================== MARKETPLACE (SHOP) ====================
+
+@app.route('/shop')
+@login_obrigatorio
+def shop():
+    conn = get_db()
+    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    
+    # Buscar produtos
+    produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
+    
+    conn.close()
+    return render_template('shop.html', usuario=usuario, produtos=produtos)
+
+@app.route('/comprar_produto', methods=['POST'])
+@login_obrigatorio
+def comprar_produto():
+    data = json.loads(request.data)
+    produto_id = data.get('produto_id')
+    preco = data.get('preco')
+    
+    conn = get_db()
+    
+    # Buscar usuário e produto
+    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    produto = conn.execute('SELECT * FROM produtos WHERE id = ? AND ativo = 1', (produto_id,)).fetchone()
+    
+    if not produto:
+        conn.close()
+        return jsonify({'sucesso': False, 'erro': 'Produto não encontrado!'})
+    
+    saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
+    
+    if saldo_total < preco:
+        conn.close()
+        return jsonify({'sucesso': False, 'erro': 'Saldo insuficiente!'})
+    
+    # Debita do saldo principal primeiro
+    if usuario['saldo_principal'] >= preco:
+        novo_saldo_principal = usuario['saldo_principal'] - preco
+        conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', (novo_saldo_principal, session['usuario_id']))
+    else:
+        restante = preco - usuario['saldo_principal']
+        conn.execute('UPDATE usuarios SET saldo_principal = 0 WHERE id = ?', (session['usuario_id'],))
+        conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', (restante, session['usuario_id']))
+    
+    # Registrar compra
+    conn.execute('''
+        INSERT INTO compras (usuario_id, produto_id, valor, data_compra)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (session['usuario_id'], produto_id, preco))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'sucesso': True})
+
 @app.route('/vip', methods=['GET', 'POST'])
 @login_obrigatorio
 def vip():

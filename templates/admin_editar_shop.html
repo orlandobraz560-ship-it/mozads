@@ -44,6 +44,9 @@
         .modal-content { background: white; color: #333; border-radius: 20px; max-width: 500px; width: 100%; padding: 20px; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .close-modal { font-size: 24px; cursor: pointer; color: #999; }
+        .preview-imagem { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
+        .url-ou-upload { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
+        .url-ou-upload button { background: #2196f3; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -65,15 +68,31 @@
             {% endfor %}
         {% endwith %}
 
-        <!-- Adicionar Produto -->
+        <!-- Adicionar Produto com Upload -->
         <div class="card">
             <h3>➕ Adicionar Novo Produto</h3>
-            <form method="POST" action="/adicionar_produto">
+            <form method="POST" action="/adicionar_produto" enctype="multipart/form-data">
                 <div class="form-grid">
                     <input type="text" name="nome" placeholder="Nome do produto" required>
                     <textarea name="descricao" placeholder="Descrição" rows="2"></textarea>
                     <input type="number" name="preco" placeholder="Preço (MZN)" step="0.01" required>
-                    <input type="text" name="imagem" placeholder="URL da imagem" value="https://placehold.co/400x400/667eea/white?text=Produto">
+                    
+                    <div>
+                        <label>📷 Imagem do Produto:</label>
+                        <div class="url-ou-upload">
+                            <button type="button" onclick="mostrarUpload()">📁 Upload de arquivo</button>
+                            <span>ou</span>
+                            <button type="button" onclick="mostrarUrl()">🔗 Usar URL</button>
+                        </div>
+                        <div id="upload-area" style="display: none;">
+                            <input type="file" name="imagem_arquivo" accept="image/*" onchange="previewImagem(this)">
+                        </div>
+                        <div id="url-area" style="display: block;">
+                            <input type="text" name="imagem_url" placeholder="https://exemplo.com/imagem.jpg">
+                        </div>
+                        <div id="preview-area" style="margin-top: 10px;"></div>
+                    </div>
+                    
                     <select name="categoria" required>
                         <option value="eletronicos">📱 Eletrônicos</option>
                         <option value="moda">👕 Moda</option>
@@ -107,7 +126,13 @@
                         {% for produto in produtos %}
                         <tr>
                             <td>{{ produto.id }}</td>
-                            <td><img src="{{ produto.imagem }}" class="produto-imagem" onerror="this.src='https://placehold.co/50x50/667eea/white?text=Erro'"></td>
+                            <td>
+                                {% if produto.imagem %}
+                                    <img src="{{ produto.imagem }}" class="produto-imagem" onerror="this.src='https://placehold.co/50x50/667eea/white?text=Erro'">
+                                {% else %}
+                                    <img src="https://placehold.co/50x50/667eea/white?text=Sem+Imagem" class="produto-imagem">
+                                {% endif %}
+                            </td>
                             <td>{{ produto.nome }}</small></td>
                             <td><small>{{ produto.descricao[:50] }}{% if produto.descricao|length > 50 %}...{% endif %}</small></td>
                             <td><strong>{{ "%.0f"|format(produto.preco) }} MZN</strong></td>
@@ -129,7 +154,7 @@
                         <tr><td colspan="8" style="text-align: center;">📭 Nenhum produto cadastrado</td></tr>
                         {% endfor %}
                     </tbody>
-                </table>
+                </div>
             </div>
         </div>
     </div>
@@ -138,6 +163,33 @@
     <div id="modalEditar" style="display: none;"></div>
 
     <script>
+        let tipoImagem = 'url';
+
+        function mostrarUpload() {
+            tipoImagem = 'upload';
+            document.getElementById('upload-area').style.display = 'block';
+            document.getElementById('url-area').style.display = 'none';
+            document.getElementById('preview-area').innerHTML = '';
+        }
+
+        function mostrarUrl() {
+            tipoImagem = 'url';
+            document.getElementById('upload-area').style.display = 'none';
+            document.getElementById('url-area').style.display = 'block';
+            document.getElementById('preview-area').innerHTML = '';
+        }
+
+        function previewImagem(input) {
+            const preview = document.getElementById('preview-area');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="preview-imagem"><br><small>Imagem selecionada</small>`;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function editarProduto(id, nome, descricao, preco, imagem, categoria) {
             const modal = document.getElementById('modalEditar');
             modal.innerHTML = `
@@ -147,7 +199,7 @@
                             <h3>✏️ Editar Produto</h3>
                             <span class="close-modal" onclick="fecharModal()">&times;</span>
                         </div>
-                        <form method="POST" action="/editar_produto/${id}">
+                        <form method="POST" action="/editar_produto/${id}" enctype="multipart/form-data">
                             <label>Nome</label>
                             <input type="text" name="nome" value="${nome.replace(/[']/g, "\\'")}" required>
                             
@@ -157,8 +209,24 @@
                             <label>Preço (MZN)</label>
                             <input type="number" name="preco" value="${preco}" step="0.01" required>
                             
-                            <label>URL da Imagem</label>
-                            <input type="text" name="imagem" value="${imagem}">
+                            <label>📷 Imagem Atual</label>
+                            <div style="margin: 10px 0;">
+                                <img src="${imagem}" style="max-width: 100px; border-radius: 10px;" onerror="this.src='https://placehold.co/100x100/667eea/white?text=Sem+Imagem'">
+                            </div>
+                            
+                            <label>Nova Imagem (opcional)</label>
+                            <div class="url-ou-upload">
+                                <button type="button" onclick="mostrarUploadEdicao()">📁 Upload</button>
+                                <span>ou</span>
+                                <button type="button" onclick="mostrarUrlEdicao()">🔗 URL</button>
+                            </div>
+                            <div id="upload-edicao" style="display: none;">
+                                <input type="file" name="imagem_arquivo" accept="image/*" onchange="previewEdicao(this)">
+                            </div>
+                            <div id="url-edicao" style="display: block;">
+                                <input type="text" name="imagem_url" placeholder="https://exemplo.com/nova-imagem.jpg">
+                            </div>
+                            <div id="preview-edicao" style="margin-top: 10px;"></div>
                             
                             <label>Categoria</label>
                             <select name="categoria">
@@ -175,6 +243,27 @@
                 </div>
             `;
             modal.style.display = 'block';
+        }
+
+        function mostrarUploadEdicao() {
+            document.getElementById('upload-edicao').style.display = 'block';
+            document.getElementById('url-edicao').style.display = 'none';
+        }
+
+        function mostrarUrlEdicao() {
+            document.getElementById('upload-edicao').style.display = 'none';
+            document.getElementById('url-edicao').style.display = 'block';
+        }
+
+        function previewEdicao(input) {
+            const preview = document.getElementById('preview-edicao');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="preview-imagem"><br><small>Nova imagem selecionada</small>`;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
         }
 
         function fecharModal() {

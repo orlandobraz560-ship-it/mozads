@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 conn = sqlite3.connect('database.db')
 cursor = conn.cursor()
 
-# ==================== TABELA DE USUÁRIOS ====================
+# ==================== TABELA DE USUÁRIOS (SEM ACENTO) ====================
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,21 +165,21 @@ CREATE TABLE IF NOT EXISTS compras (
 
 # ==================== INSERIR PRODUTOS PADRÃO (SHOP) ====================
 produtos_padrao = [
-    ('Smartphone XYZ', 'Smartphone de última geração com 128GB, câmera de 48MP', 5000, 'https://placehold.co/400x400/667eea/white?text=Smartphone', 'eletronicos'),
-    ('Fones Bluetooth', 'Fones de ouvido sem fio com cancelamento de ruído e 20h de bateria', 800, 'https://placehold.co/400x400/667eea/white?text=Fones', 'eletronicos'),
-    ('Power Bank 10000mAh', 'Carregador portátil de alta capacidade, carrega 2 dispositivos', 400, 'https://placehold.co/400x400/667eea/white?text=Power+Bank', 'eletronicos'),
-    ('Smartwatch Pro', 'Relógio inteligente com monitor cardíaco, GPS e notificações', 1500, 'https://placehold.co/400x400/667eea/white?text=Smartwatch', 'eletronicos'),
-    ('Camiseta Premium', 'Camiseta 100% algodão, várias cores, tamanhos S ao XL', 300, 'https://placehold.co/400x400/667eea/white?text=Camiseta', 'moda'),
-    ('Calça Jeans', 'Calça jeans moderna e confortável, ideal para o dia a dia', 600, 'https://placehold.co/400x400/667eea/white?text=Calça+Jeans', 'moda'),
-    ('Tênis Esportivo', 'Tênis confortável para corrida e academia, amortecimento premium', 1200, 'https://placehold.co/400x400/667eea/white?text=Tênis', 'moda'),
-    ('Jaqueta Corta-vento', 'Jaqueta leve e resistente, perfeita para dias frios', 800, 'https://placehold.co/400x400/667eea/white?text=Jaqueta', 'moda'),
-    ('Cadeira Gamer', 'Cadeira ergonômica para jogos, ajuste de altura e reclinação', 8000, 'https://placehold.co/400x400/667eea/white?text=Cadeira+Gamer', 'moveis'),
-    ('Mesa Digitalizadora', 'Mesa para desenho digital com caneta sensível à pressão', 2500, 'https://placehold.co/400x400/667eea/white?text=Mesa+Digital', 'moveis'),
-    ('Estante Modular', 'Estante moderna para livros e decoração, 4 prateleiras', 1200, 'https://placehold.co/400x400/667eea/white?text=Estante', 'moveis'),
-    ('Voucher Amazon', 'Voucher de compras na Amazon Brasil', 100, 'https://placehold.co/400x400/667eea/white?text=Voucher+Amazon', 'vouchers'),
-    ('Voucher Netflix', 'Mensalidade Netflix Premium (acesso 4 telas)', 300, 'https://placehold.co/400x400/667eea/white?text=Voucher+Netflix', 'vouchers'),
-    ('Voucher Spotify', 'Mensalidade Spotify Premium (sem anúncios)', 200, 'https://placehold.co/400x400/667eea/white?text=Voucher+Spotify', 'vouchers'),
-    ('Voucher Uber', 'Voucher de corridas Uber (válido por 30 dias)', 150, 'https://placehold.co/400x400/667eea/white?text=Voucher+Uber', 'vouchers'),
+    ('Smartphone XYZ', 'Smartphone de última geração com 128GB', 5000, 'https://placehold.co/400x400/667eea/white?text=Smartphone', 'eletronicos'),
+    ('Fones Bluetooth', 'Fones de ouvido sem fio com cancelamento de ruído', 800, 'https://placehold.co/400x400/667eea/white?text=Fones', 'eletronicos'),
+    ('Power Bank 10000mAh', 'Carregador portátil de alta capacidade', 400, 'https://placehold.co/400x400/667eea/white?text=Power+Bank', 'eletronicos'),
+    ('Smartwatch Pro', 'Relógio inteligente com monitor cardíaco', 1500, 'https://placehold.co/400x400/667eea/white?text=Smartwatch', 'eletronicos'),
+    ('Camiseta Premium', 'Camiseta 100% algodão, várias cores', 300, 'https://placehold.co/400x400/667eea/white?text=Camiseta', 'moda'),
+    ('Calça Jeans', 'Calça jeans moderna e confortável', 600, 'https://placehold.co/400x400/667eea/white?text=Calça+Jeans', 'moda'),
+    ('Tênis Esportivo', 'Tênis confortável para corrida', 1200, 'https://placehold.co/400x400/667eea/white?text=Tênis', 'moda'),
+    ('Jaqueta Corta-vento', 'Jaqueta leve e resistente', 800, 'https://placehold.co/400x400/667eea/white?text=Jaqueta', 'moda'),
+    ('Cadeira Gamer', 'Cadeira ergonômica para jogos', 8000, 'https://placehold.co/400x400/667eea/white?text=Cadeira+Gamer', 'moveis'),
+    ('Mesa Digitalizadora', 'Mesa para desenho digital com caneta', 2500, 'https://placehold.co/400x400/667eea/white?text=Mesa+Digital', 'moveis'),
+    ('Estante Modular', 'Estante moderna para livros', 1200, 'https://placehold.co/400x400/667eea/white?text=Estante', 'moveis'),
+    ('Voucher Amazon', 'Voucher de compras na Amazon', 100, 'https://placehold.co/400x400/667eea/white?text=Voucher+Amazon', 'vouchers'),
+    ('Voucher Netflix', 'Mensalidade Netflix Premium', 300, 'https://placehold.co/400x400/667eea/white?text=Voucher+Netflix', 'vouchers'),
+    ('Voucher Spotify', 'Mensalidade Spotify Premium', 200, 'https://placehold.co/400x400/667eea/white?text=Voucher+Spotify', 'vouchers'),
+    ('Voucher Uber', 'Voucher de corridas Uber', 150, 'https://placehold.co/400x400/667eea/white?text=Voucher+Uber', 'vouchers'),
     ('Voucher Ifood', 'Voucher de delivery no Ifood', 100, 'https://placehold.co/400x400/667eea/white?text=Voucher+Ifood', 'vouchers'),
 ]
 cursor.executemany('INSERT OR IGNORE INTO produtos (nome, descricao, preco, imagem, categoria) VALUES (?, ?, ?, ?, ?)', produtos_padrao)
@@ -201,6 +201,7 @@ if not admin_exists:
     INSERT INTO usuarios (nome, email, senha, codigo_convite, is_admin, nivel, nivel_nome, saldo_principal, saldo_comissao)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', ("Administrador", "admin@admin.com", senha_hash, codigo_admin, 1, 0, "Admin", 0, 0))
+    print("✅ Admin criado")
 
 # ==================== COMMIT E FINALIZAÇÃO ====================
 conn.commit()

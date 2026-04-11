@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Marketplace - {{ usuario.nome }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 16px; padding-bottom: 80px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .saldo-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .saldo-valor { font-size: 28px; font-weight: bold; color: #2e7d32; }
+        
+        .categorias { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 5px; }
+        .categoria { background: white; padding: 8px 20px; border-radius: 20px; white-space: nowrap; cursor: pointer; transition: all 0.3s; }
+        .categoria.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        
+        .produto-card { background: white; border-radius: 16px; margin-bottom: 16px; overflow: hidden; display: flex; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .produto-imagem { width: 100px; height: 100px; object-fit: cover; }
+        .produto-info { flex: 1; padding: 12px; }
+        .produto-titulo { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+        .produto-descricao { font-size: 12px; color: #666; margin-bottom: 8px; }
+        .produto-preco { font-size: 18px; font-weight: bold; color: #2e7d32; margin-bottom: 8px; }
+        .produto-preco span { font-size: 12px; color: #666; }
+        .btn-comprar { background: linear-gradient(135deg, #2196f3 0%, #21d4fd 100%); color: white; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-comprar:active { transform: scale(0.98); }
+        .btn-comprar:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+        .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
+        .bottom-item.active { color: #667eea; background: #f0f2f5; }
+        .bottom-icon { font-size: 22px; margin-bottom: 4px; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info { background: #e3f2fd; color: #1565c0; }
+        
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; border-radius: 20px; max-width: 400px; width: 100%; overflow: hidden; }
+        .modal-header { padding: 20px; text-align: center; border-bottom: 1px solid #eee; }
+        .modal-body { padding: 20px; text-align: center; }
+        .modal-footer { padding: 20px; display: flex; gap: 10px; }
+        .btn-confirmar { background: #4caf50; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; flex: 1; font-weight: bold; }
+        .btn-cancelar { background: #f44336; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; flex: 1; font-weight: bold; }
+        .produto-detalhe-imagem { width: 100%; border-radius: 12px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="header">
+            <h1>🛒 Marketplace</h1>
+            <p>Compre produtos com seu saldo</p>
+        </div>
+
+        <div class="saldo-card">
+            <div>💰 Seu Saldo Disponível</div>
+            <div class="saldo-valor" id="saldo-total">{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</div>
+            <div style="font-size: 12px; color: #666;">Principal: {{ "%.2f"|format(usuario.saldo_principal) }} MZN | Comissão: {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</div>
+        </div>
+
+        <!-- Categorias -->
+        <div class="categorias">
+            <div class="categoria active" data-cat="all">📱 Todos</div>
+            <div class="categoria" data-cat="eletronicos">📱 Eletrônicos</div>
+            <div class="categoria" data-cat="moda">👕 Moda</div>
+            <div class="categoria" data-cat="moveis">🛋️ Móveis</div>
+            <div class="categoria" data-cat="vouchers">🎁 Vouchers</div>
+        </div>
+
+        <!-- Lista de Produtos -->
+        <div id="produtos-list">
+            {% for produto in produtos %}
+            <div class="produto-card" data-cat="{{ produto.categoria }}" data-preco="{{ produto.preco }}" data-id="{{ produto.id }}">
+                <img src="{{ produto.imagem }}" class="produto-imagem" alt="{{ produto.nome }}" onerror="this.src='https://placehold.co/100x100/667eea/white?text={{ produto.nome[0] }}'">
+                <div class="produto-info">
+                    <div class="produto-titulo">{{ produto.nome }}</div>
+                    <div class="produto-descricao">{{ produto.descricao[:50] }}{% if produto.descricao|length > 50 %}...{% endif %}</div>
+                    <div class="produto-preco">{{ "%.0f"|format(produto.preco) }} MZN <span>ou {{ (produto.preco / 30)|round(0)|int }} tarefas</span></div>
+                    <button class="btn-comprar" onclick="comprarProduto({{ produto.id }}, '{{ produto.nome }}', {{ produto.preco }})">🛒 Comprar</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="bottom-menu">
+            <a href="/painel" class="bottom-item"><div class="bottom-icon">🏠</div><div>Lar</div></a>
+            <a href="/tarefas" class="bottom-item"><div class="bottom-icon">✅</div><div>Tarefa</div></a>
+            <a href="/vip" class="bottom-item"><div class="bottom-icon">👑</div><div>VIP</div></a>
+            <a href="/depositar" class="bottom-item"><div class="bottom-icon">📈</div><div>Investimentos</div></a>
+            <a href="/shop" class="bottom-item active"><div class="bottom-icon">🛒</div><div>Loja</div></a>
+        </div>
+    </div>
+
+    <div id="modalCompra" style="display: none;"></div>
+
+    <script>
+        let saldoTotal = {{ usuario.saldo_principal + usuario.saldo_comissao }};
+
+        function comprarProduto(produtoId, produtoNome, produtoPreco) {
+            if (saldoTotal < produtoPreco) {
+                mostrarToast(`❌ Saldo insuficiente! Você precisa de ${produtoPreco} MZN`, 'erro');
+                return;
+            }
+
+            const modal = document.getElementById('modalCompra');
+            modal.innerHTML = `
+                <div class="modal" onclick="fecharModal()">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>🛒 Confirmar Compra</h3>
+                        </div>
+                        <div class="modal-body">
+                            <p>Tem certeza que deseja comprar?</p>
+                            <p><strong>${produtoNome}</strong></p>
+                            <p style="font-size: 24px; color: #2e7d32; font-weight: bold;">${produtoPreco} MZN</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                            <button class="btn-confirmar" onclick="confirmarCompra(${produtoId}, ${produtoPreco})">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+
+        function confirmarCompra(produtoId, produtoPreco) {
+            fetch('/comprar_produto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ produto_id: produtoId, preco: produtoPreco })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    fecharModal();
+                    mostrarToast(`✅ Compra realizada com sucesso!`, 'sucesso');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    mostrarToast(`❌ ${data.erro}`, 'erro');
+                    fecharModal();
+                }
+            })
+            .catch(error => {
+                mostrarToast('❌ Erro de conexão', 'erro');
+                fecharModal();
+            });
+        }
+
+        function fecharModal() {
+            const modal = document.getElementById('modalCompra');
+            modal.style.display = 'none';
+            modal.innerHTML = '';
+        }
+
+        function mostrarToast(mensagem, tipo) {
+            const cores = { sucesso: '#4caf50', erro: '#f44336', info: '#2196f3' };
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:${cores[tipo] || '#333'}; color:white; padding:12px 24px; border-radius:10px; z-index:9999; animation:fadeInOut 3s;`;
+            toast.innerText = mensagem;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Filtro por categoria
+        document.querySelectorAll('.categoria').forEach(cat => {
+            cat.addEventListener('click', function() {
+                document.querySelectorAll('.categoria').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const categoria = this.dataset.cat;
+                document.querySelectorAll('.produto-card').forEach(produto => {
+                    if (categoria === 'all' || produto.dataset.cat === categoria) {
+                        produto.style.display = 'flex';
+                    } else {
+                        produto.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        function atualizarSaldo() {
+            fetch('/api/saldo')
+                .then(response => response.json())
+                .then(data => {
+                    saldoTotal = data.total;
+                    const saldoElement = document.getElementById('saldo-total');
+                    if (saldoElement) saldoElement.innerText = data.total.toFixed(2) + ' MZN';
+                })
+                .catch(error => console.error('Erro:', error));
+        }
+        setInterval(atualizarSaldo, 30000);
+
+        const style = document.createElement('style');
+        style.textContent = `@keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(20px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

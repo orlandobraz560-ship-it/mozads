@@ -2,246 +2,207 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Tarefas - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Tarefas - {{ usuario.nome }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: white;
-            padding: 20px;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header {
-            background: #16213e;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
-        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
-        th { background: #16213e; }
-        .btn-success { background: #4caf50; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        .btn-warning { background: #ff9800; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        input, select, textarea { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 16px; padding-bottom: 80px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; padding: 20px; margin-bottom: 16px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .saldo-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .saldo-valor { font-size: 28px; font-weight: bold; color: #2e7d32; }
+        
+        .domingo-aviso { background: #ff9800; color: white; padding: 15px; border-radius: 16px; text-align: center; margin-bottom: 16px; }
+        .progresso-diario { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: center; color: white; }
+        .progresso-diario .limite { font-size: 32px; font-weight: bold; }
+        .progresso-bar { background: rgba(255,255,255,0.3); border-radius: 10px; height: 10px; margin-top: 10px; overflow: hidden; }
+        .progresso-fill { background: white; height: 100%; border-radius: 10px; transition: width 0.3s; }
+        
+        .niveis-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .nivel-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .nivel-card.locked { opacity: 0.5; filter: grayscale(0.3); cursor: not-allowed; }
+        .nivel-card.active { transform: scale(1.05); box-shadow: 0 5px 20px rgba(0,0,0,0.3); border: 2px solid white; }
+        .nivel-nome { font-size: 18px; font-weight: bold; }
+        .nivel-progresso { font-size: 11px; margin-top: 5px; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 3px; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4caf50; border-radius: 2px; transition: width 0.3s; }
+        
+        .btn-tarefas { background: linear-gradient(135deg, #2196f3 0%, #21d4fd 100%); color: white; border: none; border-radius: 30px; padding: 16px; font-size: 18px; font-weight: bold; width: 100%; margin-bottom: 20px; cursor: pointer; transition: all 0.3s; }
+        .btn-tarefas:active { transform: scale(0.98); }
+        .btn-tarefas:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+        .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
+        .bottom-item.active { color: #667eea; background: #f0f2f5; }
+        .bottom-icon { font-size: 22px; margin-bottom: 4px; }
         .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
         .sucesso { background: #d4edda; color: #155724; }
         .erro { background: #f8d7da; color: #721c24; }
         .info { background: #e3f2fd; color: #1565c0; }
-        h3 { margin-bottom: 15px; }
-        .link-exemplo {
-            background: #16213e;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
     </style>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h2>🎬 Gerenciar Tarefas por Nível VIP</h2>
-            <div>
-                <a href="/admin_painel" class="btn">← Dashboard</a>
-                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
-                <a href="/admin_saques" class="btn">💸 Saques</a>
-                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
-            </div>
-        </div>
-
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
                 <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %}
         {% endwith %}
 
-        <!-- Adicionar Tarefa para Nível Específico -->
-        <div class="card">
-            <h3>➕ Adicionar Link de Anúncio por Nível VIP</h3>
-            <form method="POST" action="/adicionar_tarefa_multimidia">
-                <div class="form-grid">
-                    <input type="text" name="titulo" placeholder="Título do Anúncio" required>
-                    <input type="text" name="descricao" placeholder="Descrição" value="Clique para assistir e ganhar">
-                    
-                    <select name="nivel_requerido" required>
-                        <option value="1">👑 VIP 1 (4 MZN por anúncio)</option>
-                        <option value="2">👑 VIP 2 (10 MZN por anúncio)</option>
-                        <option value="3">👑 VIP 3 (40 MZN por anúncio)</option>
-                        <option value="4">👑 VIP 4 (100 MZN por anúncio)</option>
-                        <option value="5">👑 VIP 5 (100 MZN por anúncio)</option>
-                        <option value="6">👑 VIP 6 (500 MZN por anúncio)</option>
-                        <option value="7">👑 VIP 7 (1500 MZN por anúncio)</option>
-                    </select>
-                    
-                    <input type="text" name="url" placeholder="Link do anúncio (ex: https://omg10.com/4/10861968)" required>
-                    <input type="number" name="recompensa" placeholder="Recompensa (MZN)" step="0.01" required>
-                    <input type="number" name="duracao" placeholder="Duração (segundos)" value="30">
-                    <input type="hidden" name="tipo" value="link">
-                    
-                    <button type="submit" class="btn-success" style="padding: 10px;">➕ Adicionar Link</button>
-                </div>
-            </form>
-            <div class="link-exemplo">
-                💡 <strong>Exemplo:</strong> Link do anúncio: https://omg10.com/4/10861968
-            </div>
+        <div class="header">
+            <h1>🎬 Tarefas</h1>
+            <p>Clique no botão e ganhe dinheiro!</p>
         </div>
 
-        <!-- Tabela de Links por Nível VIP -->
-        <div class="card">
-            <h3>📋 Links de Anúncios por Nível VIP</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nível VIP</th>
-                            <th>Título</th>
-                            <th>Link</th>
-                            <th>Recompensa</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tarefa in tarefas %}
-                        <tr>
-                            <td>{{ tarefa.id }}</td>
-                            <td>
-                                {% if tarefa.nivel_requerido == 1 %}👑 VIP 1 (4 MZN)
-                                {% elif tarefa.nivel_requerido == 2 %}👑 VIP 2 (10 MZN)
-                                {% elif tarefa.nivel_requerido == 3 %}👑 VIP 3 (40 MZN)
-                                {% elif tarefa.nivel_requerido == 4 %}👑 VIP 4 (100 MZN)
-                                {% elif tarefa.nivel_requerido == 5 %}👑 VIP 5 (100 MZN)
-                                {% elif tarefa.nivel_requerido == 6 %}👑 VIP 6 (500 MZN)
-                                {% elif tarefa.nivel_requerido == 7 %}👑 VIP 7 (1500 MZN)
-                                {% else %}⭐ Estagiário{% endif %}
-                            </td>
-                            <td>{{ tarefa.titulo }}</small></td>
-                            <td>
-                                <a href="{{ tarefa.url }}" target="_blank" style="color: #4caf50;">{{ tarefa.url[:40] }}{% if tarefa.url|length > 40 %}...{% endif %}</a>
-                            </td>
-                            <td>{{ tarefa.recompensa }} MZN</small></td>
-                            <td>
-                                {% if tarefa.ativo == 1 %}
-                                    <span style="background:#4caf50; padding:2px 8px; border-radius:5px;">Ativo</span>
-                                {% else %}
-                                    <span style="background:#f44336; padding:2px 8px; border-radius:5px;">Inativo</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="/editar_tarefa/{{ tarefa.id }}" class="btn-warning">✏️ Editar</a>
-                                <a href="/remover_tarefa_multimidia/{{ tarefa.id }}" class="btn-danger" onclick="return confirm('Remover este link?')">❌ Remover</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" style="text-align: center;">📭 Nenhum link cadastrado. Adicione um link para cada nível VIP!</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        {% if is_domingo %}
+        <div class="domingo-aviso">
+            🙏 DOMINGO É DIA DE DESCANSO! 🙏<br>
+            Volte amanhã para fazer suas tarefas.
+        </div>
+        {% endif %}
+
+        <div class="saldo-card">
+            <div>💰 Seu Saldo</div>
+            <div class="saldo-valor" id="saldo-total">{{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</div>
+            <div style="font-size: 12px; color: #666;">Principal: {{ "%.2f"|format(usuario.saldo_principal) }} MZN | Comissão: {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</div>
         </div>
 
-        <!-- Configuração Rápida por Nível -->
-        <div class="card">
-            <h3>⚡ Configuração Rápida por Nível VIP</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 1</h4>
-                    <p>Recompensa: 4 MZN</p>
-                    <p>Tarefas/dia: 5</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="1">
-                        <input type="hidden" name="recompensa" value="4">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 1" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 1</button>
-                    </form>
+        <div class="progresso-diario">
+            <div>📅 TAREFAS DE HOJE</div>
+            <div class="limite">{{ tarefas_feitas_hoje }}/{{ limite_diario }}</div>
+            <div class="progresso-bar">
+                <div class="progresso-fill" style="width: {{ (tarefas_feitas_hoje / limite_diario * 100) if limite_diario > 0 else 0 }}%"></div>
+            </div>
+            {% if limite_diario == 0 and not is_domingo %}
+                <div style="font-size: 12px; margin-top: 8px;">⭐ Faça upgrade para VIP para fazer tarefas!</div>
+            {% elif is_domingo %}
+                <div style="font-size: 12px; margin-top: 8px;">🔒 Volte amanhã!</div>
+            {% else %}
+                <div style="font-size: 12px; margin-top: 8px;">Cada tarefa vale {{ recompensa_anuncio }} MZN</div>
+            {% endif %}
+        </div>
+
+        <!-- 7 Quadrados VIP -->
+        <div class="niveis-grid">
+            {% for nivel in niveis %}
+            <div class="nivel-card {% if nivel.id > usuario.nivel %}locked{% endif %} {% if nivel.id == usuario.nivel %}active{% endif %}" 
+                 onclick="{% if nivel.id <= usuario.nivel %}selecionarNivel({{ nivel.id }}){% else %}mostrarToast('Desbloqueie o {{ nivel.nome }} fazendo upgrade!', 'erro'){% endif %}">
+                <div class="nivel-nome">{{ nivel.nome }}</div>
+                <div class="nivel-progresso">
+                    {% set tarefas_feitas = progresso[nivel.id|string]['feitas'] if progresso[nivel.id|string] else 0 %}
+                    {% set tarefas_total = progresso[nivel.id|string]['total'] if progresso[nivel.id|string] else 0 %}
+                    {{ tarefas_feitas }}/{{ tarefas_total }}
                 </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 2</h4>
-                    <p>Recompensa: 10 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="2">
-                        <input type="hidden" name="recompensa" value="10">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 2" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 2</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 3</h4>
-                    <p>Recompensa: 40 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="3">
-                        <input type="hidden" name="recompensa" value="40">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 3" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 3</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 4</h4>
-                    <p>Recompensa: 100 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="4">
-                        <input type="hidden" name="recompensa" value="100">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 4" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 4</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 5</h4>
-                    <p>Recompensa: 100 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="5">
-                        <input type="hidden" name="recompensa" value="100">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 5" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 5</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 6</h4>
-                    <p>Recompensa: 500 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="6">
-                        <input type="hidden" name="recompensa" value="500">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 6" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 6</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 7</h4>
-                    <p>Recompensa: 1500 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="7">
-                        <input type="hidden" name="recompensa" value="1500">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 7" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 7</button>
-                    </form>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ (tarefas_feitas / tarefas_total * 100) if tarefas_total > 0 else 0 }}%"></div>
                 </div>
             </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botão Fazer Tarefas -->
+        <button class="btn-tarefas" id="btnFazerTarefas" 
+            onclick="fazerTarefa()"
+            {% if is_domingo or limite_diario == 0 or tarefas_feitas_hoje >= limite_diario %}disabled{% endif %}>
+            {% if is_domingo %}
+                🔒 DOMINGO - SEM TAREFAS
+            {% elif tarefas_feitas_hoje >= limite_diario and limite_diario > 0 %}
+                ✅ VOCÊ JÁ FEZ TODAS AS TAREFAS DE HOJE
+            {% elif limite_diario == 0 %}
+                ⭐ FAÇA UPGRADE PARA FAZER TAREFAS
+            {% else %}
+                🎬 FAZER TAREFA ({{ recompensa_anuncio }} MZN)
+            {% endif %}
+        </button>
+
+        <div class="bottom-menu">
+            <a href="/painel" class="bottom-item"><div class="bottom-icon">🏠</div><div>Lar</div></a>
+            <a href="/tarefas" class="bottom-item active"><div class="bottom-icon">✅</div><div>Tarefa</div></a>
+            <a href="/vip" class="bottom-item"><div class="bottom-icon">👑</div><div>VIP</div></a>
+            <a href="/depositar" class="bottom-item"><div class="bottom-icon">📈</div><div>Investimentos</div></a>
+            <a href="/convidar" class="bottom-item"><div class="bottom-icon">👤</div><div>Meu</div></a>
         </div>
     </div>
+
+    <script>
+        let nivelSelecionado = {{ usuario.nivel }};
+        let tarefasFeitasHoje = {{ tarefas_feitas_hoje }};
+        let limiteDiario = {{ limite_diario }};
+        let recompensa = {{ recompensa_anuncio }};
+
+        function selecionarNivel(nivel) {
+            nivelSelecionado = nivel;
+            document.querySelectorAll('.nivel-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            mostrarToast(`Nível ${nivel} selecionado`, 'info');
+        }
+
+        function fazerTarefa() {
+            if (tarefasFeitasHoje >= limiteDiario && limiteDiario > 0) {
+                mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
+                return;
+            }
+            
+            // Desabilitar botão para evitar múltiplos cliques
+            const btn = document.getElementById('btnFazerTarefas');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Processando...';
+            
+            fetch('/clicar_tarefa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    mostrarToast(`✅ Você ganhou ${recompensa} MZN!`, 'sucesso');
+                    // Abrir o link do anúncio em nova aba
+                    if (data.url) {
+                        window.open(data.url, '_blank');
+                    }
+                    // Recarregar a página para atualizar o contador
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    mostrarToast(`❌ ${data.erro}`, 'erro');
+                    btn.disabled = false;
+                    btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
+                }
+            })
+            .catch(error => {
+                mostrarToast('❌ Erro de conexão', 'erro');
+                btn.disabled = false;
+                btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
+            });
+        }
+
+        function mostrarToast(mensagem, tipo) {
+            const cores = { sucesso: '#4caf50', erro: '#f44336', info: '#2196f3' };
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:${cores[tipo] || '#333'}; color:white; padding:12px 24px; border-radius:10px; z-index:9999; animation:fadeInOut 3s;`;
+            toast.innerText = mensagem;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function atualizarSaldo() {
+            fetch('/api/saldo')
+                .then(response => response.json())
+                .then(data => {
+                    const saldoElement = document.getElementById('saldo-total');
+                    if (saldoElement) saldoElement.innerText = data.total.toFixed(2) + ' MZN';
+                })
+                .catch(error => console.error('Erro:', error));
+        }
+        setInterval(atualizarSaldo, 30000);
+
+        const style = document.createElement('style');
+        style.textContent = `@keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(20px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }`;
+        document.head.appendChild(style);
+    </script>
 </body>
 </html>

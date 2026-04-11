@@ -682,6 +682,84 @@ def admin_depositos():
     conn.close()
     return render_template('admin_depositos.html', pedidos=pedidos, historico=historico)
 
+
+# ==================== ADMIN - GERENCIAR LOJA ====================
+
+@app.route('/admin_editar_shop')
+@admin_obrigatorio
+def admin_editar_shop():
+    conn = get_db()
+    produtos = conn.execute('SELECT * FROM produtos ORDER BY id DESC').fetchall()
+    conn.close()
+    return render_template('admin_editar_shop.html', produtos=produtos)
+
+@app.route('/adicionar_produto', methods=['POST'])
+@admin_obrigatorio
+def adicionar_produto():
+    nome = request.form['nome']
+    descricao = request.form.get('descricao', '')
+    preco = float(request.form['preco'])
+    imagem = request.form.get('imagem', 'https://placehold.co/400x400/667eea/white?text=Produto')
+    categoria = request.form.get('categoria', 'outros')
+    
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO produtos (nome, descricao, preco, imagem, categoria, ativo)
+        VALUES (?, ?, ?, ?, ?, 1)
+    ''', (nome, descricao, preco, imagem, categoria))
+    conn.commit()
+    conn.close()
+    
+    flash('✅ Produto adicionado com sucesso!', 'sucesso')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/editar_produto/<int:produto_id>', methods=['POST'])
+@admin_obrigatorio
+def editar_produto(produto_id):
+    nome = request.form['nome']
+    descricao = request.form.get('descricao', '')
+    preco = float(request.form['preco'])
+    imagem = request.form.get('imagem', 'https://placehold.co/400x400/667eea/white?text=Produto')
+    categoria = request.form.get('categoria', 'outros')
+    
+    conn = get_db()
+    conn.execute('''
+        UPDATE produtos 
+        SET nome = ?, descricao = ?, preco = ?, imagem = ?, categoria = ?
+        WHERE id = ?
+    ''', (nome, descricao, preco, imagem, categoria, produto_id))
+    conn.commit()
+    conn.close()
+    
+    flash('✅ Produto atualizado com sucesso!', 'sucesso')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/remover_produto/<int:produto_id>')
+@admin_obrigatorio
+def remover_produto(produto_id):
+    conn = get_db()
+    conn.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('❌ Produto removido!', 'erro')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/alternar_produto/<int:produto_id>')
+@admin_obrigatorio
+def alternar_produto(produto_id):
+    conn = get_db()
+    produto = conn.execute('SELECT ativo FROM produtos WHERE id = ?', (produto_id,)).fetchone()
+    
+    if produto:
+        novo_status = 0 if produto['ativo'] == 1 else 1
+        conn.execute('UPDATE produtos SET ativo = ? WHERE id = ?', (novo_status, produto_id))
+        flash(f'✅ Produto {"ativado" if novo_status == 1 else "desativado"}!', 'sucesso')
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_editar_shop'))
+
 @app.route('/admin_saques')
 @admin_obrigatorio
 def admin_saques():

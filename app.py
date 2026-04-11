@@ -541,10 +541,14 @@ def vip():
                                    (restante, session['usuario_id']))
                     
                     # ========== COMISSÃO DE 25% PARA QUEM CONVIDOU ==========
+                    # Só paga comissão se o usuário foi convidado por alguém
                     if usuario['convidado_por']:
                         comissao = valor_novo_vip * 0.25  # 25% do valor
                         
-                        # Adicionar comissão ao convidante
+                        # Buscar nome do convidante para mensagem
+                        convidante = conn.execute('SELECT nome FROM usuarios WHERE codigo_convite = ?', (usuario['convidado_por'],)).fetchone()
+                        
+                        # Adicionar comissão ao convidante (vai para saldo_comissao)
                         conn.execute('''
                             UPDATE usuarios 
                             SET saldo_comissao = saldo_comissao + ?, 
@@ -559,7 +563,7 @@ def vip():
                             FROM usuarios WHERE codigo_convite = ?
                         ''', (comissao, usuario['convidado_por']))
                         
-                        flash(f'✅ Seu convidante recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
+                        flash(f'✅ {convidante["nome"] if convidante else "Seu convidante"} recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
                     
                     # Atualizar nível do usuário
                     nova_validade = (datetime.now() + timedelta(days=novo_nivel['duracao_dias'])).strftime('%Y-%m-%d')

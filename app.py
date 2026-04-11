@@ -27,14 +27,15 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ==================== CORREÇÃO AUTOMÁTICA DO BANCO ====================
-
 def corrigir_banco_automaticamente():
-    """Corrige o banco de dados automaticamente sem precisar de terminal"""
+    """Corrige o banco de dados automaticamente sem apagar dados"""
     try:
+        # Se o banco não existir, NÃO FAZ NADA
         if not os.path.exists('database.db'):
-            print("⚠️ Banco de dados não encontrado! Será criado ao primeiro acesso.")
-            return
+            print("⚠️ Banco de dados não encontrado! Execute init_db.py manualmente.")
+            return  # Sair sem criar nada
         
+        # Se existe, apenas verificar e ajustar colunas
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         
@@ -42,6 +43,7 @@ def corrigir_banco_automaticamente():
         cursor.execute("PRAGMA table_info(usuarios)")
         colunas = [c[1] for c in cursor.fetchall()]
         
+        # Apenas ADICIONAR colunas faltantes, NUNCA apagar dados
         colunas_necessarias = {
             'telefone': 'TEXT',
             'validade_inicio': 'TEXT',
@@ -57,7 +59,7 @@ def corrigir_banco_automaticamente():
             if coluna not in colunas:
                 try:
                     cursor.execute(f'ALTER TABLE usuarios ADD COLUMN {coluna} {tipo}')
-                    print(f'✅ Coluna {coluna} adicionada em usuarios')
+                    print(f'✅ Coluna {coluna} adicionada')
                 except:
                     pass
         
@@ -67,68 +69,20 @@ def corrigir_banco_automaticamente():
         
         if 'tarefas_por_dia' not in colunas_niveis:
             cursor.execute('ALTER TABLE niveis ADD COLUMN tarefas_por_dia INTEGER DEFAULT 0')
-            print('✅ Coluna tarefas_por_dia adicionada em niveis')
         
         if 'recompensa_por_anuncio' not in colunas_niveis:
             cursor.execute('ALTER TABLE niveis ADD COLUMN recompensa_por_anuncio REAL DEFAULT 0')
-            print('✅ Coluna recompensa_por_anuncio adicionada em niveis')
         
-        # Verificar se tabela produtos existe
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='produtos'")
-        if not cursor.fetchone():
-            cursor.execute('''
-            CREATE TABLE produtos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                descricao TEXT,
-                preco REAL NOT NULL,
-                imagem TEXT,
-                categoria TEXT DEFAULT 'outros',
-                ativo INTEGER DEFAULT 1,
-                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            ''')
-            print('✅ Tabela produtos criada')
-            
-            produtos_padrao = [
-                ('Smartphone XYZ', 'Smartphone de última geração', 5000, 'https://placehold.co/400x400/667eea/white?text=Smartphone', 'eletronicos'),
-                ('Fones Bluetooth', 'Fones de ouvido sem fio', 800, 'https://placehold.co/400x400/667eea/white?text=Fones', 'eletronicos'),
-                ('Camiseta Premium', 'Camiseta 100% algodão', 300, 'https://placehold.co/400x400/667eea/white?text=Camiseta', 'moda'),
-                ('Tênis Esportivo', 'Tênis confortável', 1200, 'https://placehold.co/400x400/667eea/white?text=Tênis', 'moda'),
-                ('Voucher Amazon', 'Voucher de 100 MZN', 100, 'https://placehold.co/400x400/667eea/white?text=Voucher', 'vouchers'),
-            ]
-            cursor.executemany('INSERT OR IGNORE INTO produtos (nome, descricao, preco, imagem, categoria) VALUES (?, ?, ?, ?, ?)', produtos_padrao)
-            print('✅ Produtos inseridos')
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='compras'")
-        if not cursor.fetchone():
-            cursor.execute('''
-            CREATE TABLE compras (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                usuario_id INTEGER,
-                produto_id INTEGER,
-                valor REAL,
-                data_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            ''')
-            print('✅ Tabela compras criada')
-        
-        niveis_valores = [
-            (0, 2, 0), (1, 5, 4), (2, 10, 10), (3, 10, 40),
-            (4, 10, 100), (5, 20, 100), (6, 20, 500), (7, 20, 1500),
-        ]
-        for nivel_id, tarefas, recompensa in niveis_valores:
-            cursor.execute('''
-                UPDATE niveis SET tarefas_por_dia = ?, recompensa_por_anuncio = ? WHERE id = ?
-            ''', (tarefas, recompensa, nivel_id))
+        # NUNCA atualizar valores dos níveis (isso pode corromper)
+        # Remova a parte que atualiza os níveis
         
         conn.commit()
         conn.close()
-        print('✅ Banco de dados corrigido com sucesso!')
+        print('✅ Banco de dados verificado (sem recriação)!')
         
     except Exception as e:
         print(f'❌ Erro na correção do banco: {e}')
-
+        
 corrigir_banco_automaticamente()
 
 # ==================== FUNÇÕES AUXILIARES ====================

@@ -18,18 +18,15 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
 
-# ==================== FUNÇÕES DO BANCO DE DADOS ====================
+# ==================== FUNÇÃO PARA CORRIGIR O BANCO ====================
 
-def verificar_banco():
-    """Verifica o banco de dados sem apagar dados existentes"""
-    if not os.path.exists('database.db'):
-        print("⚠️ Banco de dados não encontrado! Execute python init_db.py primeiro.")
-        return False
-    
-    print("✅ Banco de dados encontrado!")
-    
-    # Apenas verificar/ajustar colunas se necessário
+def corrigir_banco():
+    """Corrige o banco adicionando colunas faltantes"""
     try:
+        if not os.path.exists('database.db'):
+            print("⚠️ Banco de dados não encontrado! Execute init_db.py primeiro.")
+            return
+        
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         
@@ -37,18 +34,36 @@ def verificar_banco():
         cursor.execute("PRAGMA table_info(niveis)")
         colunas = [c[1] for c in cursor.fetchall()]
         
-        if 'tarefas_por_dia' not in colunas:
-            cursor.execute('ALTER TABLE niveis ADD COLUMN tarefas_por_dia INTEGER DEFAULT 0')
-            print("✅ Coluna tarefas_por_dia adicionada")
-        
         if 'recompensa_por_anuncio' not in colunas:
             cursor.execute('ALTER TABLE niveis ADD COLUMN recompensa_por_anuncio REAL DEFAULT 0')
             print("✅ Coluna recompensa_por_anuncio adicionada")
         
+        if 'tarefas_por_dia' not in colunas:
+            cursor.execute('ALTER TABLE niveis ADD COLUMN tarefas_por_dia INTEGER DEFAULT 0')
+            print("✅ Coluna tarefas_por_dia adicionada")
+        
+        # Atualizar os valores dos níveis
+        niveis_valores = [
+            (0, 2, 0),     # Estagiário
+            (1, 5, 4),     # VIP 1
+            (2, 10, 10),   # VIP 2
+            (3, 10, 40),   # VIP 3
+            (4, 10, 100),  # VIP 4
+            (5, 20, 100),  # VIP 5
+            (6, 20, 500),  # VIP 6
+            (7, 20, 1500), # VIP 7
+        ]
+        
+        for nivel_id, tarefas, recompensa in niveis_valores:
+            cursor.execute('''
+                UPDATE niveis 
+                SET tarefas_por_dia = ?, recompensa_por_anuncio = ? 
+                WHERE id = ?
+            ''', (tarefas, recompensa, nivel_id))
+        
         # Verificar se existe tarefa com link
         cursor.execute("SELECT id FROM tarefas_multimidia LIMIT 1")
         if not cursor.fetchone():
-            # Inserir tarefa padrão se não existir
             cursor.execute('''
                 INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido, ativo)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -57,11 +72,15 @@ def verificar_banco():
         
         conn.commit()
         conn.close()
-        return True
+        print("✅ Banco de dados verificado e corrigido!")
         
     except Exception as e:
-        print(f"❌ Erro ao verificar banco: {e}")
-        return False
+        print(f"❌ Erro ao corrigir banco: {e}")
+
+# Executar correção do banco
+corrigir_banco()
+
+# ==================== FUNÇÕES AUXILIARES ====================
 
 def get_db():
     conn = sqlite3.connect('database.db')
@@ -306,10 +325,10 @@ def clicar_tarefa():
             try:
                 recompensa = nivel_info['recompensa_por_anuncio']
             except:
-                recompensa = 10
+                recompensa = 0
         else:
             limite_diario = 2
-            recompensa = 10
+            recompensa = 0
         
         # Verificar se é domingo
         if date.today().weekday() == 6:
@@ -592,7 +611,7 @@ def admin_tarefas():
     conn.close()
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
-@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
@@ -607,7 +626,7 @@ def confirmar_deposito(pedido_id):
     
     return render_template('confirmar_deposito.html', pedido=pedido)
 
-@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_deposito(pedido_id):
     conn = get_db()
@@ -621,7 +640,7 @@ def rejeitar_deposito(pedido_id):
     
     return render_template('rejeitar_deposito.html', pedido=pedido)
 
-@app.route('/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_saque(saque_id):
     conn = get_db()
@@ -636,7 +655,7 @@ def confirmar_saque(saque_id):
     
     return render_template('confirmar_saque.html', saque=saque)
 
-@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_saque(saque_id):
     conn = get_db()
@@ -650,7 +669,7 @@ def rejeitar_saque(saque_id):
     
     return render_template('rejeitar_saque.html', saque=saque)
 
-@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
+@app.route('/admin/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def ajustar_saldo(usuario_id):
     conn = get_db()
@@ -681,7 +700,7 @@ def ajustar_saldo(usuario_id):
     
     return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
 
-@app.route('/deposito_manual', methods=['POST'])
+@app.route('/admin/deposito_manual', methods=['POST'])
 @admin_obrigatorio
 def deposito_manual():
     usuario_id = int(request.form['usuario_id'])
@@ -703,7 +722,7 @@ def deposito_manual():
     flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
     return redirect(url_for('admin_usuarios'))
 
-@app.route('/adicionar_tarefa_multimidia', methods=['POST'])
+@app.route('/admin/adicionar_tarefa_multimidia', methods=['POST'])
 @admin_obrigatorio
 def adicionar_tarefa_multimidia():
     titulo = request.form['titulo']
@@ -725,7 +744,7 @@ def adicionar_tarefa_multimidia():
     flash('✅ Tarefa adicionada!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/remover_tarefa_multimidia/<int:tarefa_id>')
+@app.route('/admin/remover_tarefa_multimidia/<int:tarefa_id>')
 @admin_obrigatorio
 def remover_tarefa_multimidia(tarefa_id):
     conn = get_db()
@@ -735,7 +754,7 @@ def remover_tarefa_multimidia(tarefa_id):
     flash('❌ Tarefa removida!', 'erro')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/configurar_link_rapido', methods=['POST'])
+@app.route('/admin/configurar_link_rapido', methods=['POST'])
 @admin_obrigatorio
 def configurar_link_rapido():
     nivel_id = int(request.form['nivel_id'])
@@ -765,7 +784,7 @@ def configurar_link_rapido():
     
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/editar_tarefa/<int:tarefa_id>', methods=['GET', 'POST'])
+@app.route('/admin/editar_tarefa/<int:tarefa_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def editar_tarefa(tarefa_id):
     conn = get_db()
@@ -798,14 +817,11 @@ def editar_tarefa(tarefa_id):
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 5000))
     
-    # Verificar banco sem recriar
-    verificar_banco()
-    
     print("=" * 60)
     print("🚀 SERVIDOR INICIADO COM SUCESSO!")
     print("=" * 60)
     print(f"📍 Acesse: https://mozads.onrender.com")
-    print("👑 Admin: admin@admin.com / admin123")
+    print("👑 Admin: admin@admin.com / senha: admin123")
     print("=" * 60)
     
     app.run(debug=False, host='0.0.0.0', port=PORT)

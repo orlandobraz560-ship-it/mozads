@@ -3,244 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Tarefas - Admin</title>
+    <title>Editar Tarefa - Admin</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: white;
-            padding: 20px;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header {
-            background: #16213e;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: white; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
-        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
-        th { background: #16213e; }
-        .btn-success { background: #4caf50; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        .btn-warning { background: #ff9800; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; border: none; cursor: pointer; }
-        input, select, textarea { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
-        .sucesso { background: #d4edda; color: #155724; }
-        .erro { background: #f8d7da; color: #721c24; }
-        .info { background: #e3f2fd; color: #1565c0; }
-        h3 { margin-bottom: 15px; }
-        .link-exemplo {
-            background: #16213e;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            margin-top: 10px;
-        }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        input, select { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
+        label { display: block; margin-top: 10px; }
     </style>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h2>🎬 Gerenciar Tarefas por Nível VIP</h2>
-            <div>
-                <a href="/admin_painel" class="btn">← Dashboard</a>
-                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
-                <a href="/admin_saques" class="btn">💸 Saques</a>
-                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
-            </div>
-        </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endwith %}
-
-        <!-- Adicionar Tarefa para Nível Específico -->
         <div class="card">
-            <h3>➕ Adicionar Link de Anúncio por Nível VIP</h3>
-            <form method="POST" action="/admin/adicionar_tarefa_multimidia">
-                <div class="form-grid">
-                    <input type="text" name="titulo" placeholder="Título do Anúncio" required>
-                    <input type="text" name="descricao" placeholder="Descrição" value="Clique para assistir e ganhar">
-                    
-                    <select name="nivel_requerido" required>
-                        <option value="1">👑 VIP 1 (4 MZN por anúncio)</option>
-                        <option value="2">👑 VIP 2 (10 MZN por anúncio)</option>
-                        <option value="3">👑 VIP 3 (40 MZN por anúncio)</option>
-                        <option value="4">👑 VIP 4 (100 MZN por anúncio)</option>
-                        <option value="5">👑 VIP 5 (100 MZN por anúncio)</option>
-                        <option value="6">👑 VIP 6 (500 MZN por anúncio)</option>
-                        <option value="7">👑 VIP 7 (1500 MZN por anúncio)</option>
-                    </select>
-                    
-                    <input type="text" name="url" placeholder="Link do anúncio (ex: https://omg10.com/4/10861968)" required>
-                    <input type="number" name="recompensa" placeholder="Recompensa (MZN)" step="0.01" required>
-                    <input type="number" name="duracao" placeholder="Duração (segundos)" value="30">
-                    <input type="hidden" name="tipo" value="link">
-                    
-                    <button type="submit" class="btn-success" style="padding: 10px;">➕ Adicionar Link</button>
-                </div>
+            <h2>✏️ Editar Tarefa</h2>
+            <form method="POST">
+                <label>Título</label>
+                <input type="text" name="titulo" value="{{ tarefa.titulo }}" required>
+                
+                <label>Descrição</label>
+                <input type="text" name="descricao" value="{{ tarefa.descricao }}">
+                
+                <label>URL do Anúncio</label>
+                <input type="text" name="url" value="{{ tarefa.url }}" required>
+                
+                <label>Recompensa (MZN)</label>
+                <input type="number" name="recompensa" value="{{ tarefa.recompensa }}" step="0.01" required>
+                
+                <label>Nível Requerido</label>
+                <select name="nivel_requerido">
+                    {% for nivel in niveis %}
+                        <option value="{{ nivel.id }}" {% if tarefa.nivel_requerido == nivel.id %}selected{% endif %}>
+                            {{ nivel.nome }} ({{ nivel.recompensa_por_anuncio }} MZN)
+                        </option>
+                    {% endfor %}
+                </select>
+                
+                <button type="submit" class="btn-success">💾 Salvar Alterações</button>
+                <a href="/admin_tarefas" class="btn">← Cancelar</a>
             </form>
-            <div class="link-exemplo">
-                💡 <strong>Exemplo:</strong> Link do anúncio: https://omg10.com/4/10861968
-            </div>
-        </div>
-
-        <!-- Tabela de Links por Nível VIP -->
-        <div class="card">
-            <h3>📋 Links de Anúncios por Nível VIP</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nível VIP</th>
-                            <th>Título</th>
-                            <th>Link</th>
-                            <th>Recompensa</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for tarefa in tarefas %}
-                        <tr>
-                            <td>{{ tarefa.id }}</td>
-                            <td>
-                                {% if tarefa.nivel_requerido == 1 %}👑 VIP 1 (4 MZN)
-                                {% elif tarefa.nivel_requerido == 2 %}👑 VIP 2 (10 MZN)
-                                {% elif tarefa.nivel_requerido == 3 %}👑 VIP 3 (40 MZN)
-                                {% elif tarefa.nivel_requerido == 4 %}👑 VIP 4 (100 MZN)
-                                {% elif tarefa.nivel_requerido == 5 %}👑 VIP 5 (100 MZN)
-                                {% elif tarefa.nivel_requerido == 6 %}👑 VIP 6 (500 MZN)
-                                {% elif tarefa.nivel_requerido == 7 %}👑 VIP 7 (1500 MZN)
-                                {% else %}⭐ Estagiário{% endif %}
-                            </td>
-                            <td>{{ tarefa.titulo }}</small></td>
-                            <td>
-                                <a href="{{ tarefa.url }}" target="_blank" style="color: #4caf50;">{{ tarefa.url[:40] }}{% if tarefa.url|length > 40 %}...{% endif %}</a>
-                            </td>
-                            <td>{{ tarefa.recompensa }} MZN</small></td>
-                            <td>
-                                {% if tarefa.ativo == 1 %}
-                                    <span style="background:#4caf50; padding:2px 8px; border-radius:5px;">Ativo</span>
-                                {% else %}
-                                    <span style="background:#f44336; padding:2px 8px; border-radius:5px;">Inativo</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="/admin/editar_tarefa/{{ tarefa.id }}" class="btn-warning">✏️ Editar</a>
-                                <a href="/admin/remover_tarefa_multimidia/{{ tarefa.id }}" class="btn-danger" onclick="return confirm('Remover este link?')">❌ Remover</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" style="text-align: center;">📭 Nenhum link cadastrado. Adicione um link para cada nível VIP!</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Configuração Rápida por Nível -->
-        <div class="card">
-            <h3>⚡ Configuração Rápida por Nível VIP</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 1</h4>
-                    <p>Recompensa: 4 MZN</p>
-                    <p>Tarefas/dia: 5</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="1">
-                        <input type="hidden" name="recompensa" value="4">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 1" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 1</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 2</h4>
-                    <p>Recompensa: 10 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="2">
-                        <input type="hidden" name="recompensa" value="10">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 2" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 2</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 3</h4>
-                    <p>Recompensa: 40 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="3">
-                        <input type="hidden" name="recompensa" value="40">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 3" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 3</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 4</h4>
-                    <p>Recompensa: 100 MZN</p>
-                    <p>Tarefas/dia: 10</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="4">
-                        <input type="hidden" name="recompensa" value="100">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 4" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 4</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 5</h4>
-                    <p>Recompensa: 100 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="5">
-                        <input type="hidden" name="recompensa" value="100">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 5" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 5</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 6</h4>
-                    <p>Recompensa: 500 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="6">
-                        <input type="hidden" name="recompensa" value="500">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 6" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 6</button>
-                    </form>
-                </div>
-                
-                <div style="background: #16213e; padding: 15px; border-radius: 10px;">
-                    <h4>👑 VIP 7</h4>
-                    <p>Recompensa: 1500 MZN</p>
-                    <p>Tarefas/dia: 20</p>
-                    <form method="POST" action="/admin/configurar_link_rapido">
-                        <input type="hidden" name="nivel_id" value="7">
-                        <input type="hidden" name="recompensa" value="1500">
-                        <input type="text" name="url" placeholder="Link do anúncio VIP 7" required style="margin: 5px 0;">
-                        <button type="submit" class="btn-success" style="width:100%;">Salvar Link VIP 7</button>
-                    </form>
-                </div>
-            </div>
         </div>
     </div>
 </body>

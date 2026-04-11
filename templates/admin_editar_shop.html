@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Loja - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-warning { background: #ff9800; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .btn-danger { background: #f44336; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin: 2px; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        input, select, textarea { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        .sucesso { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+        .info { background: #e3f2fd; color: #1565c0; }
+        h3 { margin-bottom: 15px; }
+        .produto-imagem { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; color: #333; border-radius: 20px; max-width: 500px; width: 100%; padding: 20px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-modal { font-size: 24px; cursor: pointer; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>🛒 Gerenciar Loja (Marketplace)</h2>
+            <div>
+                <a href="/admin_painel" class="btn">← Dashboard</a>
+                <a href="/admin_depositos" class="btn">💰 Depósitos</a>
+                <a href="/admin_saques" class="btn">💸 Saques</a>
+                <a href="/admin_usuarios" class="btn">👥 Usuários</a>
+                <a href="/admin_tarefas" class="btn">🎬 Tarefas</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Adicionar Produto -->
+        <div class="card">
+            <h3>➕ Adicionar Novo Produto</h3>
+            <form method="POST" action="/adicionar_produto">
+                <div class="form-grid">
+                    <input type="text" name="nome" placeholder="Nome do produto" required>
+                    <textarea name="descricao" placeholder="Descrição" rows="2"></textarea>
+                    <input type="number" name="preco" placeholder="Preço (MZN)" step="0.01" required>
+                    <input type="text" name="imagem" placeholder="URL da imagem" value="https://placehold.co/400x400/667eea/white?text=Produto">
+                    <select name="categoria" required>
+                        <option value="eletronicos">📱 Eletrônicos</option>
+                        <option value="moda">👕 Moda</option>
+                        <option value="moveis">🛋️ Móveis</option>
+                        <option value="vouchers">🎁 Vouchers</option>
+                        <option value="outros">📦 Outros</option>
+                    </select>
+                    <button type="submit" class="btn-success">➕ Adicionar Produto</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de Produtos -->
+        <div class="card">
+            <h3>📋 Produtos da Loja</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Imagem</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Preço</th>
+                            <th>Categoria</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produto in produtos %}
+                        <tr>
+                            <td>{{ produto.id }}</td>
+                            <td><img src="{{ produto.imagem }}" class="produto-imagem" onerror="this.src='https://placehold.co/50x50/667eea/white?text=Erro'"></td>
+                            <td>{{ produto.nome }}</small></td>
+                            <td><small>{{ produto.descricao[:50] }}{% if produto.descricao|length > 50 %}...{% endif %}</small></td>
+                            <td><strong>{{ "%.0f"|format(produto.preco) }} MZN</strong></td>
+                            <td>{{ produto.categoria }}</small></td>
+                            <td>
+                                {% if produto.ativo == 1 %}
+                                    <span style="background:#4caf50; padding:2px 8px; border-radius:5px;">Ativo</span>
+                                {% else %}
+                                    <span style="background:#f44336; padding:2px 8px; border-radius:5px;">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn-warning" onclick="editarProduto({{ produto.id }}, '{{ produto.nome }}', '{{ produto.descricao }}', {{ produto.preco }}, '{{ produto.imagem }}', '{{ produto.categoria }}')">✏️ Editar</button>
+                                <a href="/alternar_produto/{{ produto.id }}" class="btn-warning" onclick="return confirm('Alternar status do produto?')">🔄 Ativar/Inativar</a>
+                                <a href="/remover_produto/{{ produto.id }}" class="btn-danger" onclick="return confirm('Remover produto permanentemente?')">❌ Remover</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" style="text-align: center;">📭 Nenhum produto cadastrado</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="modalEditar" style="display: none;"></div>
+
+    <script>
+        function editarProduto(id, nome, descricao, preco, imagem, categoria) {
+            const modal = document.getElementById('modalEditar');
+            modal.innerHTML = `
+                <div class="modal" onclick="fecharModal()">
+                    <div class="modal-content" onclick="event.stopPropagation()">
+                        <div class="modal-header">
+                            <h3>✏️ Editar Produto</h3>
+                            <span class="close-modal" onclick="fecharModal()">&times;</span>
+                        </div>
+                        <form method="POST" action="/editar_produto/${id}">
+                            <label>Nome</label>
+                            <input type="text" name="nome" value="${nome.replace(/[']/g, "\\'")}" required>
+                            
+                            <label>Descrição</label>
+                            <textarea name="descricao" rows="3">${descricao.replace(/[']/g, "\\'")}</textarea>
+                            
+                            <label>Preço (MZN)</label>
+                            <input type="number" name="preco" value="${preco}" step="0.01" required>
+                            
+                            <label>URL da Imagem</label>
+                            <input type="text" name="imagem" value="${imagem}">
+                            
+                            <label>Categoria</label>
+                            <select name="categoria">
+                                <option value="eletronicos" ${categoria === 'eletronicos' ? 'selected' : ''}>📱 Eletrônicos</option>
+                                <option value="moda" ${categoria === 'moda' ? 'selected' : ''}>👕 Moda</option>
+                                <option value="moveis" ${categoria === 'moveis' ? 'selected' : ''}>🛋️ Móveis</option>
+                                <option value="vouchers" ${categoria === 'vouchers' ? 'selected' : ''}>🎁 Vouchers</option>
+                                <option value="outros" ${categoria === 'outros' ? 'selected' : ''}>📦 Outros</option>
+                            </select>
+                            
+                            <button type="submit" class="btn-success" style="margin-top: 15px; width: 100%;">💾 Salvar Alterações</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+
+        function fecharModal() {
+            const modal = document.getElementById('modalEditar');
+            modal.style.display = 'none';
+            modal.innerHTML = '';
+        }
+    </script>
+</body>
+</html>

@@ -12,16 +12,25 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_mude_para_algo_seguro_123456')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+# Configuração para upload de imagens
+UPLOAD_FOLDER = 'static/produtos'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 # Criar pasta para comprovantes
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ==================== CORREÇÃO AUTOMÁTICA DO BANCO ====================
 
 def corrigir_banco_automaticamente():
     """Corrige o banco de dados automaticamente sem precisar de terminal"""
     try:
-        # Verificar se o banco existe
         if not os.path.exists('database.db'):
             print("⚠️ Banco de dados não encontrado! Será criado ao primeiro acesso.")
             return
@@ -33,7 +42,6 @@ def corrigir_banco_automaticamente():
         cursor.execute("PRAGMA table_info(usuarios)")
         colunas = [c[1] for c in cursor.fetchall()]
         
-        # Lista de colunas necessárias
         colunas_necessarias = {
             'telefone': 'TEXT',
             'validade_inicio': 'TEXT',
@@ -45,14 +53,13 @@ def corrigir_banco_automaticamente():
             'ganhos_total': 'REAL DEFAULT 0'
         }
         
-        # Adicionar colunas faltantes
         for coluna, tipo in colunas_necessarias.items():
             if coluna not in colunas:
                 try:
                     cursor.execute(f'ALTER TABLE usuarios ADD COLUMN {coluna} {tipo}')
                     print(f'✅ Coluna {coluna} adicionada em usuarios')
-                except Exception as e:
-                    print(f'⚠️ Erro ao adicionar {coluna}: {e}')
+                except:
+                    pass
         
         # Verificar colunas da tabela niveis
         cursor.execute("PRAGMA table_info(niveis)")
@@ -83,7 +90,6 @@ def corrigir_banco_automaticamente():
             ''')
             print('✅ Tabela produtos criada')
             
-            # Inserir produtos padrão
             produtos_padrao = [
                 ('Smartphone XYZ', 'Smartphone de última geração', 5000, 'https://placehold.co/400x400/667eea/white?text=Smartphone', 'eletronicos'),
                 ('Fones Bluetooth', 'Fones de ouvido sem fio', 800, 'https://placehold.co/400x400/667eea/white?text=Fones', 'eletronicos'),
@@ -94,7 +100,6 @@ def corrigir_banco_automaticamente():
             cursor.executemany('INSERT OR IGNORE INTO produtos (nome, descricao, preco, imagem, categoria) VALUES (?, ?, ?, ?, ?)', produtos_padrao)
             print('✅ Produtos inseridos')
         
-        # Verificar se tabela compras existe
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='compras'")
         if not cursor.fetchone():
             cursor.execute('''
@@ -108,22 +113,13 @@ def corrigir_banco_automaticamente():
             ''')
             print('✅ Tabela compras criada')
         
-        # Atualizar valores dos níveis
         niveis_valores = [
-            (0, 2, 0),
-            (1, 5, 4),
-            (2, 10, 10),
-            (3, 10, 40),
-            (4, 10, 100),
-            (5, 20, 100),
-            (6, 20, 500),
-            (7, 20, 1500),
+            (0, 2, 0), (1, 5, 4), (2, 10, 10), (3, 10, 40),
+            (4, 10, 100), (5, 20, 100), (6, 20, 500), (7, 20, 1500),
         ]
         for nivel_id, tarefas, recompensa in niveis_valores:
             cursor.execute('''
-                UPDATE niveis 
-                SET tarefas_por_dia = ?, recompensa_por_anuncio = ? 
-                WHERE id = ?
+                UPDATE niveis SET tarefas_por_dia = ?, recompensa_por_anuncio = ? WHERE id = ?
             ''', (tarefas, recompensa, nivel_id))
         
         conn.commit()
@@ -133,7 +129,6 @@ def corrigir_banco_automaticamente():
     except Exception as e:
         print(f'❌ Erro na correção do banco: {e}')
 
-# Executar correção automática
 corrigir_banco_automaticamente()
 
 # ==================== FUNÇÕES AUXILIARES ====================
@@ -519,7 +514,6 @@ def vip():
                         conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', 
                                    (restante, session['usuario_id']))
                     
-                    # Comissão de 25% para quem convidou
                     if usuario['convidado_por']:
                         comissao = valor_novo_vip * 0.25
                         conn.execute('''
@@ -560,9 +554,7 @@ def shop():
     try:
         conn = get_db()
         usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        
         produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
-        
         conn.close()
         return render_template('shop.html', usuario=usuario, produtos=produtos)
     
@@ -614,6 +606,118 @@ def comprar_produto():
     except Exception as e:
         print(f"❌ Erro em /comprar_produto: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
+
+# ==================== ADMIN - GERENCIAR PRODUTOS ====================
+
+@app.route('/admin_editar_shop')
+@admin_obrigatorio
+def admin_editar_shop():
+    conn = get_db()
+    produtos = conn.execute('SELECT * FROM produtos ORDER BY id DESC').fetchall()
+    conn.close()
+    return render_template('admin_editar_shop.html', produtos=produtos)
+
+@app.route('/adicionar_produto', methods=['POST'])
+@admin_obrigatorio
+def adicionar_produto():
+    nome = request.form['nome']
+    descricao = request.form.get('descricao', '')
+    preco = float(request.form['preco'])
+    categoria = request.form.get('categoria', 'outros')
+    
+    imagem_path = None
+    
+    if 'imagem_arquivo' in request.files:
+        file = request.files['imagem_arquivo']
+        if file and file.filename and allowed_file(file.filename):
+            filename = secure_filename(f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            imagem_path = f'/{UPLOAD_FOLDER}/{filename}'
+    
+    if not imagem_path:
+        imagem_path = request.form.get('imagem_url', 'https://placehold.co/400x400/667eea/white?text=Produto')
+    
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO produtos (nome, descricao, preco, imagem, categoria, ativo)
+        VALUES (?, ?, ?, ?, ?, 1)
+    ''', (nome, descricao, preco, imagem_path, categoria))
+    conn.commit()
+    conn.close()
+    
+    flash('✅ Produto adicionado com sucesso!', 'sucesso')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/editar_produto/<int:produto_id>', methods=['POST'])
+@admin_obrigatorio
+def editar_produto(produto_id):
+    nome = request.form['nome']
+    descricao = request.form.get('descricao', '')
+    preco = float(request.form['preco'])
+    categoria = request.form.get('categoria', 'outros')
+    
+    imagem_path = None
+    
+    if 'imagem_arquivo' in request.files:
+        file = request.files['imagem_arquivo']
+        if file and file.filename and allowed_file(file.filename):
+            filename = secure_filename(f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            imagem_path = f'/{UPLOAD_FOLDER}/{filename}'
+    
+    if not imagem_path:
+        imagem_url = request.form.get('imagem_url', '')
+        if imagem_url:
+            imagem_path = imagem_url
+    
+    conn = get_db()
+    
+    if imagem_path:
+        conn.execute('''
+            UPDATE produtos 
+            SET nome = ?, descricao = ?, preco = ?, imagem = ?, categoria = ?
+            WHERE id = ?
+        ''', (nome, descricao, preco, imagem_path, categoria, produto_id))
+    else:
+        conn.execute('''
+            UPDATE produtos 
+            SET nome = ?, descricao = ?, preco = ?, categoria = ?
+            WHERE id = ?
+        ''', (nome, descricao, preco, categoria, produto_id))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('✅ Produto atualizado com sucesso!', 'sucesso')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/remover_produto/<int:produto_id>')
+@admin_obrigatorio
+def remover_produto(produto_id):
+    conn = get_db()
+    conn.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
+    conn.commit()
+    conn.close()
+    
+    flash('❌ Produto removido!', 'erro')
+    return redirect(url_for('admin_editar_shop'))
+
+@app.route('/alternar_produto/<int:produto_id>')
+@admin_obrigatorio
+def alternar_produto(produto_id):
+    conn = get_db()
+    produto = conn.execute('SELECT ativo FROM produtos WHERE id = ?', (produto_id,)).fetchone()
+    
+    if produto:
+        novo_status = 0 if produto['ativo'] == 1 else 1
+        conn.execute('UPDATE produtos SET ativo = ? WHERE id = ?', (novo_status, produto_id))
+        flash(f'✅ Produto {"ativado" if novo_status == 1 else "desativado"}!', 'sucesso')
+    
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_editar_shop'))
 
 # ==================== PAINEL ADMIN ====================
 
@@ -681,84 +785,6 @@ def admin_depositos():
     
     conn.close()
     return render_template('admin_depositos.html', pedidos=pedidos, historico=historico)
-
-
-# ==================== ADMIN - GERENCIAR LOJA ====================
-
-@app.route('/admin_editar_shop')
-@admin_obrigatorio
-def admin_editar_shop():
-    conn = get_db()
-    produtos = conn.execute('SELECT * FROM produtos ORDER BY id DESC').fetchall()
-    conn.close()
-    return render_template('admin_editar_shop.html', produtos=produtos)
-
-@app.route('/adicionar_produto', methods=['POST'])
-@admin_obrigatorio
-def adicionar_produto():
-    nome = request.form['nome']
-    descricao = request.form.get('descricao', '')
-    preco = float(request.form['preco'])
-    imagem = request.form.get('imagem', 'https://placehold.co/400x400/667eea/white?text=Produto')
-    categoria = request.form.get('categoria', 'outros')
-    
-    conn = get_db()
-    conn.execute('''
-        INSERT INTO produtos (nome, descricao, preco, imagem, categoria, ativo)
-        VALUES (?, ?, ?, ?, ?, 1)
-    ''', (nome, descricao, preco, imagem, categoria))
-    conn.commit()
-    conn.close()
-    
-    flash('✅ Produto adicionado com sucesso!', 'sucesso')
-    return redirect(url_for('admin_editar_shop'))
-
-@app.route('/editar_produto/<int:produto_id>', methods=['POST'])
-@admin_obrigatorio
-def editar_produto(produto_id):
-    nome = request.form['nome']
-    descricao = request.form.get('descricao', '')
-    preco = float(request.form['preco'])
-    imagem = request.form.get('imagem', 'https://placehold.co/400x400/667eea/white?text=Produto')
-    categoria = request.form.get('categoria', 'outros')
-    
-    conn = get_db()
-    conn.execute('''
-        UPDATE produtos 
-        SET nome = ?, descricao = ?, preco = ?, imagem = ?, categoria = ?
-        WHERE id = ?
-    ''', (nome, descricao, preco, imagem, categoria, produto_id))
-    conn.commit()
-    conn.close()
-    
-    flash('✅ Produto atualizado com sucesso!', 'sucesso')
-    return redirect(url_for('admin_editar_shop'))
-
-@app.route('/remover_produto/<int:produto_id>')
-@admin_obrigatorio
-def remover_produto(produto_id):
-    conn = get_db()
-    conn.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
-    conn.commit()
-    conn.close()
-    
-    flash('❌ Produto removido!', 'erro')
-    return redirect(url_for('admin_editar_shop'))
-
-@app.route('/alternar_produto/<int:produto_id>')
-@admin_obrigatorio
-def alternar_produto(produto_id):
-    conn = get_db()
-    produto = conn.execute('SELECT ativo FROM produtos WHERE id = ?', (produto_id,)).fetchone()
-    
-    if produto:
-        novo_status = 0 if produto['ativo'] == 1 else 1
-        conn.execute('UPDATE produtos SET ativo = ? WHERE id = ?', (novo_status, produto_id))
-        flash(f'✅ Produto {"ativado" if novo_status == 1 else "desativado"}!', 'sucesso')
-    
-    conn.commit()
-    conn.close()
-    return redirect(url_for('admin_editar_shop'))
 
 @app.route('/admin_saques')
 @admin_obrigatorio

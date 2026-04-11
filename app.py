@@ -4,8 +4,6 @@ import hashlib
 import secrets
 import os
 import json
-import subprocess
-import sys
 from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
@@ -18,42 +16,109 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
 
-# ==================== FUNÇÃO PARA CORRIGIR O BANCO ====================
+# ==================== CORREÇÃO AUTOMÁTICA DO BANCO ====================
 
-def corrigir_banco():
-    """Corrige o banco adicionando colunas faltantes"""
+def corrigir_banco_automaticamente():
+    """Corrige o banco de dados automaticamente sem precisar de terminal"""
     try:
+        # Verificar se o banco existe
         if not os.path.exists('database.db'):
-            print("⚠️ Banco de dados não encontrado! Execute init_db.py primeiro.")
+            print("⚠️ Banco de dados não encontrado! Será criado ao primeiro acesso.")
             return
         
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         
-        # Verificar colunas da tabela niveis
-        cursor.execute("PRAGMA table_info(niveis)")
+        # Verificar colunas da tabela usuarios
+        cursor.execute("PRAGMA table_info(usuarios)")
         colunas = [c[1] for c in cursor.fetchall()]
         
-        if 'recompensa_por_anuncio' not in colunas:
-            cursor.execute('ALTER TABLE niveis ADD COLUMN recompensa_por_anuncio REAL DEFAULT 0')
-            print("✅ Coluna recompensa_por_anuncio adicionada")
+        # Lista de colunas necessárias
+        colunas_necessarias = {
+            'telefone': 'TEXT',
+            'validade_inicio': 'TEXT',
+            'validade_fim': 'TEXT',
+            'ganhos_hoje': 'REAL DEFAULT 0',
+            'ganhos_ontem': 'REAL DEFAULT 0',
+            'ganhos_semana': 'REAL DEFAULT 0',
+            'ganhos_mes': 'REAL DEFAULT 0',
+            'ganhos_total': 'REAL DEFAULT 0'
+        }
         
-        if 'tarefas_por_dia' not in colunas:
+        # Adicionar colunas faltantes
+        for coluna, tipo in colunas_necessarias.items():
+            if coluna not in colunas:
+                try:
+                    cursor.execute(f'ALTER TABLE usuarios ADD COLUMN {coluna} {tipo}')
+                    print(f'✅ Coluna {coluna} adicionada em usuarios')
+                except Exception as e:
+                    print(f'⚠️ Erro ao adicionar {coluna}: {e}')
+        
+        # Verificar colunas da tabela niveis
+        cursor.execute("PRAGMA table_info(niveis)")
+        colunas_niveis = [c[1] for c in cursor.fetchall()]
+        
+        if 'tarefas_por_dia' not in colunas_niveis:
             cursor.execute('ALTER TABLE niveis ADD COLUMN tarefas_por_dia INTEGER DEFAULT 0')
-            print("✅ Coluna tarefas_por_dia adicionada")
+            print('✅ Coluna tarefas_por_dia adicionada em niveis')
         
-        # Atualizar os valores dos níveis
+        if 'recompensa_por_anuncio' not in colunas_niveis:
+            cursor.execute('ALTER TABLE niveis ADD COLUMN recompensa_por_anuncio REAL DEFAULT 0')
+            print('✅ Coluna recompensa_por_anuncio adicionada em niveis')
+        
+        # Verificar se tabela produtos existe
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='produtos'")
+        if not cursor.fetchone():
+            cursor.execute('''
+            CREATE TABLE produtos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                preco REAL NOT NULL,
+                imagem TEXT,
+                categoria TEXT DEFAULT 'outros',
+                ativo INTEGER DEFAULT 1,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            print('✅ Tabela produtos criada')
+            
+            # Inserir produtos padrão
+            produtos_padrao = [
+                ('Smartphone XYZ', 'Smartphone de última geração', 5000, 'https://placehold.co/400x400/667eea/white?text=Smartphone', 'eletronicos'),
+                ('Fones Bluetooth', 'Fones de ouvido sem fio', 800, 'https://placehold.co/400x400/667eea/white?text=Fones', 'eletronicos'),
+                ('Camiseta Premium', 'Camiseta 100% algodão', 300, 'https://placehold.co/400x400/667eea/white?text=Camiseta', 'moda'),
+                ('Tênis Esportivo', 'Tênis confortável', 1200, 'https://placehold.co/400x400/667eea/white?text=Tênis', 'moda'),
+                ('Voucher Amazon', 'Voucher de 100 MZN', 100, 'https://placehold.co/400x400/667eea/white?text=Voucher', 'vouchers'),
+            ]
+            cursor.executemany('INSERT OR IGNORE INTO produtos (nome, descricao, preco, imagem, categoria) VALUES (?, ?, ?, ?, ?)', produtos_padrao)
+            print('✅ Produtos inseridos')
+        
+        # Verificar se tabela compras existe
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='compras'")
+        if not cursor.fetchone():
+            cursor.execute('''
+            CREATE TABLE compras (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                produto_id INTEGER,
+                valor REAL,
+                data_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            print('✅ Tabela compras criada')
+        
+        # Atualizar valores dos níveis
         niveis_valores = [
-            (0, 2, 0),     # Estagiário
-            (1, 5, 4),     # VIP 1
-            (2, 10, 10),   # VIP 2
-            (3, 10, 40),   # VIP 3
-            (4, 10, 100),  # VIP 4
-            (5, 20, 100),  # VIP 5
-            (6, 20, 500),  # VIP 6
-            (7, 20, 1500), # VIP 7
+            (0, 2, 0),
+            (1, 5, 4),
+            (2, 10, 10),
+            (3, 10, 40),
+            (4, 10, 100),
+            (5, 20, 100),
+            (6, 20, 500),
+            (7, 20, 1500),
         ]
-        
         for nivel_id, tarefas, recompensa in niveis_valores:
             cursor.execute('''
                 UPDATE niveis 
@@ -61,24 +126,15 @@ def corrigir_banco():
                 WHERE id = ?
             ''', (tarefas, recompensa, nivel_id))
         
-        # Verificar se existe tarefa com link
-        cursor.execute("SELECT id FROM tarefas_multimidia LIMIT 1")
-        if not cursor.fetchone():
-            cursor.execute('''
-                INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido, ativo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('Anúncio Diário', 'Clique para assistir e ganhar', 'link', 'https://omg10.com/4/10861968', 10, 30, 1, 1))
-            print("✅ Tarefa padrão adicionada")
-        
         conn.commit()
         conn.close()
-        print("✅ Banco de dados verificado e corrigido!")
+        print('✅ Banco de dados corrigido com sucesso!')
         
     except Exception as e:
-        print(f"❌ Erro ao corrigir banco: {e}")
+        print(f'❌ Erro na correção do banco: {e}')
 
-# Executar correção do banco
-corrigir_banco()
+# Executar correção automática
+corrigir_banco_automaticamente()
 
 # ==================== FUNÇÕES AUXILIARES ====================
 
@@ -122,28 +178,28 @@ def cadastro():
     codigo_ref = request.args.get('ref', '')
     
     if request.method == 'POST':
-        nome = request.form['nome']
-        email = request.form['email']
-        telefone = request.form.get('telefone', '')
-        senha = request.form['senha']
-        codigo_convite = request.form.get('codigo_convite', '') or codigo_ref
-        
-        senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-        codigo_proprio = secrets.token_hex(4).upper()
-        
-        conn = get_db()
-        
-        convidado_por = None
-        nome_convidante = None
-        if codigo_convite:
-            convite_valido = conn.execute('SELECT id, nome FROM usuarios WHERE codigo_convite = ?', (codigo_convite,)).fetchone()
-            if convite_valido:
-                convidado_por = codigo_convite
-                nome_convidante = convite_valido['nome']
-        
-        validade_fim = (datetime.now() + timedelta(days=180)).strftime('%Y-%m-%d')
-        
         try:
+            nome = request.form['nome']
+            email = request.form['email']
+            telefone = request.form.get('telefone', '')
+            senha = request.form['senha']
+            codigo_convite = request.form.get('codigo_convite', '') or codigo_ref
+            
+            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+            codigo_proprio = secrets.token_hex(4).upper()
+            
+            conn = get_db()
+            
+            convidado_por = None
+            nome_convidante = None
+            if codigo_convite:
+                convite_valido = conn.execute('SELECT id, nome FROM usuarios WHERE codigo_convite = ?', (codigo_convite,)).fetchone()
+                if convite_valido:
+                    convidado_por = codigo_convite
+                    nome_convidante = convite_valido['nome']
+            
+            validade_fim = (datetime.now() + timedelta(days=180)).strftime('%Y-%m-%d')
+            
             conn.execute('''
                 INSERT INTO usuarios (nome, email, telefone, senha, codigo_convite, convidado_por, validade_inicio, validade_fim)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -155,11 +211,17 @@ def cadastro():
                 flash(f'✅ Cadastro realizado! Você foi convidado por {nome_convidante}', 'sucesso')
             else:
                 flash('Cadastro realizado com sucesso! Faça login.', 'sucesso')
+            
+            conn.close()
             return redirect(url_for('login'))
+            
         except sqlite3.IntegrityError:
             flash('Email já cadastrado!', 'erro')
-        finally:
-            conn.close()
+            return redirect(url_for('cadastro'))
+        except Exception as e:
+            print(f"❌ Erro no cadastro: {str(e)}")
+            flash(f'Erro ao cadastrar: {str(e)}', 'erro')
+            return redirect(url_for('cadastro'))
     
     return render_template('cadastro.html', codigo_ref=codigo_ref)
 
@@ -205,7 +267,7 @@ def painel():
                                     (usuario['codigo_convite'],)).fetchone()['total']
     
     comissao_indicacao = conn.execute('''
-        SELECT COALESCE(SUM(p.valor * 0.15), 0) as total 
+        SELECT COALESCE(SUM(p.valor * 0.25), 0) as total 
         FROM pedidos_deposito p
         JOIN usuarios u ON p.usuario_id = u.id
         WHERE u.convidado_por = ? AND p.status = 'confirmado'
@@ -235,22 +297,14 @@ def tarefas():
         conn = get_db()
         usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
         
-        # Verificar se é domingo
         hoje = date.today()
         is_domingo = hoje.weekday() == 6
         
-        # Buscar nível do usuário
         nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
         
         if nivel_usuario:
-            try:
-                limite_diario = nivel_usuario['tarefas_por_dia']
-            except:
-                limite_diario = 2
-            try:
-                recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
-            except:
-                recompensa_anuncio = 0
+            limite_diario = nivel_usuario['tarefas_por_dia'] if nivel_usuario['tarefas_por_dia'] else 2
+            recompensa_anuncio = nivel_usuario['recompensa_por_anuncio'] if nivel_usuario['recompensa_por_anuncio'] else 0
         else:
             limite_diario = 2
             recompensa_anuncio = 0
@@ -258,17 +312,14 @@ def tarefas():
         if is_domingo:
             limite_diario = 0
         
-        # Contar tarefas feitas hoje
         tarefas_feitas_hoje = conn.execute('''
             SELECT COUNT(*) as total 
             FROM tarefas_assistidas 
             WHERE usuario_id = ? AND date(data_assistida) = date('now')
         ''', (session['usuario_id'],)).fetchone()['total']
         
-        # Buscar todos os níveis
         niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
         
-        # Calcular progresso
         progresso = {}
         for nivel in niveis:
             nivel_id = nivel['id']
@@ -308,34 +359,22 @@ def clicar_tarefa():
     try:
         conn = get_db()
         
-        # LINK FIXO DO ANÚNCIO
         URL_FIXO = "https://omg10.com/4/10861968"
         
-        # Buscar nível do usuário
         usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        
-        # Buscar informações do nível
         nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
         
         if nivel_info:
-            try:
-                limite_diario = nivel_info['tarefas_por_dia']
-            except:
-                limite_diario = 2
-            try:
-                recompensa = nivel_info['recompensa_por_anuncio']
-            except:
-                recompensa = 0
+            limite_diario = nivel_info['tarefas_por_dia'] if nivel_info['tarefas_por_dia'] else 2
+            recompensa = nivel_info['recompensa_por_anuncio'] if nivel_info['recompensa_por_anuncio'] else 0
         else:
             limite_diario = 2
             recompensa = 0
         
-        # Verificar se é domingo
         if date.today().weekday() == 6:
             conn.close()
             return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
         
-        # Verificar limite diário
         tarefas_feitas_hoje = conn.execute('''
             SELECT COUNT(*) as total FROM tarefas_assistidas 
             WHERE usuario_id = ? AND date(data_assistida) = date('now')
@@ -345,13 +384,11 @@ def clicar_tarefa():
             conn.close()
             return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
         
-        # Registrar tarefa concluída
         conn.execute('''
             INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
             VALUES (?, ?, ?)
         ''', (session['usuario_id'], 0, recompensa))
         
-        # Adicionar saldo
         conn.execute('''
             UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
             WHERE id = ?
@@ -454,63 +491,6 @@ def convidar():
     conn.close()
     return render_template('convidar.html', usuario=usuario, convidados=convidados, total_convidados=len(convidados))
 
-# ==================== MARKETPLACE (SHOP) ====================
-
-@app.route('/shop')
-@login_obrigatorio
-def shop():
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    
-    # Buscar produtos
-    produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
-    
-    conn.close()
-    return render_template('shop.html', usuario=usuario, produtos=produtos)
-
-@app.route('/comprar_produto', methods=['POST'])
-@login_obrigatorio
-def comprar_produto():
-    data = json.loads(request.data)
-    produto_id = data.get('produto_id')
-    preco = data.get('preco')
-    
-    conn = get_db()
-    
-    # Buscar usuário e produto
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    produto = conn.execute('SELECT * FROM produtos WHERE id = ? AND ativo = 1', (produto_id,)).fetchone()
-    
-    if not produto:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': 'Produto não encontrado!'})
-    
-    saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
-    
-    if saldo_total < preco:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': 'Saldo insuficiente!'})
-    
-    # Debita do saldo principal primeiro
-    if usuario['saldo_principal'] >= preco:
-        novo_saldo_principal = usuario['saldo_principal'] - preco
-        conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', (novo_saldo_principal, session['usuario_id']))
-    else:
-        restante = preco - usuario['saldo_principal']
-        conn.execute('UPDATE usuarios SET saldo_principal = 0 WHERE id = ?', (session['usuario_id'],))
-        conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', (restante, session['usuario_id']))
-    
-    # Registrar compra
-    conn.execute('''
-        INSERT INTO compras (usuario_id, produto_id, valor, data_compra)
-        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    ''', (session['usuario_id'], produto_id, preco))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'sucesso': True})
-
 @app.route('/vip', methods=['GET', 'POST'])
 @login_obrigatorio
 def vip():
@@ -529,7 +509,6 @@ def vip():
             
             if novo_nivel_id > nivel_atual:
                 if saldo_total >= valor_novo_vip:
-                    # Cobrar o valor do novo VIP
                     if usuario['saldo_principal'] >= valor_novo_vip:
                         novo_saldo_principal = usuario['saldo_principal'] - valor_novo_vip
                         conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', 
@@ -540,15 +519,9 @@ def vip():
                         conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', 
                                    (restante, session['usuario_id']))
                     
-                    # ========== COMISSÃO DE 25% PARA QUEM CONVIDOU ==========
-                    # Só paga comissão se o usuário foi convidado por alguém
+                    # Comissão de 25% para quem convidou
                     if usuario['convidado_por']:
-                        comissao = valor_novo_vip * 0.25  # 25% do valor
-                        
-                        # Buscar nome do convidante para mensagem
-                        convidante = conn.execute('SELECT nome FROM usuarios WHERE codigo_convite = ?', (usuario['convidado_por'],)).fetchone()
-                        
-                        # Adicionar comissão ao convidante (vai para saldo_comissao)
+                        comissao = valor_novo_vip * 0.25
                         conn.execute('''
                             UPDATE usuarios 
                             SET saldo_comissao = saldo_comissao + ?, 
@@ -556,16 +529,8 @@ def vip():
                             WHERE codigo_convite = ?
                         ''', (comissao, comissao, usuario['convidado_por']))
                         
-                        # Registrar transação da comissão
-                        conn.execute('''
-                            INSERT INTO pedidos_deposito (usuario_id, valor, status, metodo_pagamento)
-                            SELECT id, ?, 'confirmado', 'comissao_indicacao'
-                            FROM usuarios WHERE codigo_convite = ?
-                        ''', (comissao, usuario['convidado_por']))
-                        
-                        flash(f'✅ {convidante["nome"] if convidante else "Seu convidante"} recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
+                        flash(f'✅ Seu convidante recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
                     
-                    # Atualizar nível do usuário
                     nova_validade = (datetime.now() + timedelta(days=novo_nivel['duracao_dias'])).strftime('%Y-%m-%d')
                     conn.execute('''
                         UPDATE usuarios 
@@ -586,6 +551,69 @@ def vip():
     
     conn.close()
     return render_template('vip.html', usuario=usuario, niveis=niveis)
+
+# ==================== SHOP (MARKETPLACE) ====================
+
+@app.route('/shop')
+@login_obrigatorio
+def shop():
+    try:
+        conn = get_db()
+        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+        
+        produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
+        
+        conn.close()
+        return render_template('shop.html', usuario=usuario, produtos=produtos)
+    
+    except Exception as e:
+        print(f"❌ Erro em /shop: {str(e)}")
+        flash('Erro ao carregar a loja', 'erro')
+        return redirect(url_for('painel'))
+
+@app.route('/comprar_produto', methods=['POST'])
+@login_obrigatorio
+def comprar_produto():
+    try:
+        data = json.loads(request.data)
+        produto_id = data.get('produto_id')
+        preco = data.get('preco')
+        
+        conn = get_db()
+        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+        produto = conn.execute('SELECT * FROM produtos WHERE id = ? AND ativo = 1', (produto_id,)).fetchone()
+        
+        if not produto:
+            conn.close()
+            return jsonify({'sucesso': False, 'erro': 'Produto não encontrado!'})
+        
+        saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
+        
+        if saldo_total < preco:
+            conn.close()
+            return jsonify({'sucesso': False, 'erro': f'Saldo insuficiente!'})
+        
+        if usuario['saldo_principal'] >= preco:
+            novo_saldo_principal = usuario['saldo_principal'] - preco
+            conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', (novo_saldo_principal, session['usuario_id']))
+        else:
+            restante = preco - usuario['saldo_principal']
+            conn.execute('UPDATE usuarios SET saldo_principal = 0 WHERE id = ?', (session['usuario_id'],))
+            conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', (restante, session['usuario_id']))
+        
+        conn.execute('''
+            INSERT INTO compras (usuario_id, produto_id, valor, data_compra)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (session['usuario_id'], produto_id, preco))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'sucesso': True})
+    
+    except Exception as e:
+        print(f"❌ Erro em /comprar_produto: {str(e)}")
+        return jsonify({'sucesso': False, 'erro': str(e)})
 
 # ==================== PAINEL ADMIN ====================
 
@@ -702,9 +730,7 @@ def confirmar_deposito(pedido_id):
     pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
     
     if request.method == 'POST':
-        # Apenas adicionar saldo principal - SEM COMISSÃO
         conn.execute('UPDATE usuarios SET saldo_principal = saldo_principal + ? WHERE id = ?', (pedido['valor'], pedido['usuario_id']))
-        
         conn.execute('UPDATE pedidos_deposito SET status = "confirmado", data_confirmacao = CURRENT_TIMESTAMP WHERE id = ?', (pedido_id,))
         conn.commit()
         flash(f'✅ Depósito de {pedido["valor"]} MZN confirmado!', 'sucesso')
@@ -840,65 +866,6 @@ def remover_tarefa_multimidia(tarefa_id):
     flash('❌ Tarefa removida!', 'erro')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/configurar_link_rapido', methods=['POST'])
-@admin_obrigatorio
-def configurar_link_rapido():
-    nivel_id = int(request.form['nivel_id'])
-    url = request.form['url']
-    recompensa = float(request.form['recompensa'])
-    
-    conn = get_db()
-    
-    existe = conn.execute('SELECT id FROM tarefas_multimidia WHERE nivel_requerido = ? AND tipo = "link"', (nivel_id,)).fetchone()
-    
-    if existe:
-        conn.execute('''
-            UPDATE tarefas_multimidia 
-            SET url = ?, recompensa = ?, titulo = ?, descricao = ?
-            WHERE nivel_requerido = ? AND tipo = "link"
-        ''', (url, recompensa, f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', nivel_id))
-        flash(f'✅ Link do VIP {nivel_id} atualizado!', 'sucesso')
-    else:
-        conn.execute('''
-            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, nivel_requerido, ativo)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', 'link', url, recompensa, nivel_id, 1))
-        flash(f'✅ Link do VIP {nivel_id} adicionado!', 'sucesso')
-    
-    conn.commit()
-    conn.close()
-    
-    return redirect(url_for('admin_tarefas'))
-
-@app.route('/editar_tarefa/<int:tarefa_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def editar_tarefa(tarefa_id):
-    conn = get_db()
-    
-    if request.method == 'POST':
-        titulo = request.form['titulo']
-        descricao = request.form['descricao']
-        url = request.form['url']
-        recompensa = float(request.form['recompensa'])
-        nivel_requerido = int(request.form['nivel_requerido'])
-        
-        conn.execute('''
-            UPDATE tarefas_multimidia 
-            SET titulo = ?, descricao = ?, url = ?, recompensa = ?, nivel_requerido = ?
-            WHERE id = ?
-        ''', (titulo, descricao, url, recompensa, nivel_requerido, tarefa_id))
-        conn.commit()
-        conn.close()
-        
-        flash('✅ Tarefa atualizada!', 'sucesso')
-        return redirect(url_for('admin_tarefas'))
-    
-    tarefa = conn.execute('SELECT * FROM tarefas_multimidia WHERE id = ?', (tarefa_id,)).fetchone()
-    niveis = conn.execute('SELECT * FROM niveis WHERE id > 0').fetchall()
-    conn.close()
-    
-    return render_template('editar_tarefa.html', tarefa=tarefa, niveis=niveis)
-
 # ==================== INICIALIZAÇÃO ====================
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 5000))
@@ -906,7 +873,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print("🚀 SERVIDOR INICIADO COM SUCESSO!")
     print("=" * 60)
-    print(f"📍 Acesse: https://mozads.onrender.com")
+    print("📍 Acesse: https://mozads.onrender.com")
     print("👑 Admin: admin@admin.com / senha: admin123")
     print("=" * 60)
     

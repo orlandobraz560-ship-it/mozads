@@ -472,6 +472,7 @@ def vip():
             
             if novo_nivel_id > nivel_atual:
                 if saldo_total >= valor_novo_vip:
+                    # Cobrar o valor do novo VIP
                     if usuario['saldo_principal'] >= valor_novo_vip:
                         novo_saldo_principal = usuario['saldo_principal'] - valor_novo_vip
                         conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', 
@@ -482,6 +483,28 @@ def vip():
                         conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', 
                                    (restante, session['usuario_id']))
                     
+                    # ========== COMISSÃO DE 25% PARA QUEM CONVIDOU ==========
+                    if usuario['convidado_por']:
+                        comissao = valor_novo_vip * 0.25  # 25% do valor
+                        
+                        # Adicionar comissão ao convidante
+                        conn.execute('''
+                            UPDATE usuarios 
+                            SET saldo_comissao = saldo_comissao + ?, 
+                                ganhos_total = ganhos_total + ? 
+                            WHERE codigo_convite = ?
+                        ''', (comissao, comissao, usuario['convidado_por']))
+                        
+                        # Registrar transação da comissão
+                        conn.execute('''
+                            INSERT INTO pedidos_deposito (usuario_id, valor, status, metodo_pagamento)
+                            SELECT id, ?, 'confirmado', 'comissao_indicacao'
+                            FROM usuarios WHERE codigo_convite = ?
+                        ''', (comissao, usuario['convidado_por']))
+                        
+                        flash(f'✅ Seu convidante recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
+                    
+                    # Atualizar nível do usuário
                     nova_validade = (datetime.now() + timedelta(days=novo_nivel['duracao_dias'])).strftime('%Y-%m-%d')
                     conn.execute('''
                         UPDATE usuarios 
@@ -615,11 +638,23 @@ def admin_tarefas():
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
-    pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
+    pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone, u.convidado_por FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
     
     if request.method == 'POST':
-        conn.execute('UPDATE pedidos_deposito SET status = "confirmado", data_confirmacao = CURRENT_TIMESTAMP WHERE id = ?', (pedido_id,))
+        # Adicionar saldo principal
         conn.execute('UPDATE usuarios SET saldo_principal = saldo_principal + ? WHERE id = ?', (pedido['valor'], pedido['usuario_id']))
+        
+        # Comissão de 25% para quem convidou (se houver)
+        if pedido['convidado_por']:
+            comissao = pedido['valor'] * 0.25
+            conn.execute('''
+                UPDATE usuarios 
+                SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
+                WHERE codigo_convite = ?
+            ''', (comissao, comissao, pedido['convidado_por']))
+            flash(f'✅ Comissão de {comissao:.2f} MZN enviada para o convidante!', 'info')
+        
+        conn.execute('UPDATE pedidos_deposito SET status = "confirmado", data_confirmacao = CURRENT_TIMESTAMP WHERE id = ?', (pedido_id,))
         conn.commit()
         flash(f'✅ Depósito de {pedido["valor"]} MZN confirmado!', 'sucesso')
         return redirect(url_for('admin_depositos'))

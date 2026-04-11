@@ -395,13 +395,24 @@ def tarefas():
         hoje = date.today()
         is_domingo = hoje.weekday() == 6
         
-        # Buscar nível do usuário
-        nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
-        
-        if nivel_usuario:
-            limite_diario = nivel_usuario['tarefas_por_dia']
-            recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
-        else:
+        # Buscar nível do usuário - com tratamento de erro
+        try:
+            nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
+            if nivel_usuario:
+                # Tentar pegar as colunas, se não existirem, usar valores padrão
+                try:
+                    limite_diario = nivel_usuario['tarefas_por_dia']
+                except:
+                    limite_diario = 2
+                try:
+                    recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
+                except:
+                    recompensa_anuncio = 0
+            else:
+                limite_diario = 2
+                recompensa_anuncio = 0
+        except Exception as e:
+            print(f"Erro ao buscar nível: {e}")
             limite_diario = 2
             recompensa_anuncio = 0
         
@@ -449,60 +460,73 @@ def tarefas():
     
     except Exception as e:
         print(f"❌ ERRO em /tarefas: {str(e)}")
-        flash(f'Erro: {str(e)}', 'erro')
+        flash(f'Erro ao carregar tarefas: {str(e)}', 'erro')
         return redirect(url_for('painel'))
 
 @app.route('/clicar_tarefa', methods=['POST'])
 @login_obrigatorio
 def clicar_tarefa():
-    conn = get_db()
-    
-    # Buscar nível do usuário
-    usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
-    
-    if nivel_info:
-        limite_diario = nivel_info['tarefas_por_dia']
-        recompensa = nivel_info['recompensa_por_anuncio']
-    else:
-        limite_diario = 0
-        recompensa = 0
-    
-    # Verificar se é domingo
-    if date.today().weekday() == 6:
+    try:
+        conn = get_db()
+        
+        # Buscar nível do usuário
+        usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+        
+        # Buscar informações do nível
+        nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
+        
+        if nivel_info:
+            try:
+                limite_diario = nivel_info['tarefas_por_dia']
+            except:
+                limite_diario = 2
+            try:
+                recompensa = nivel_info['recompensa_por_anuncio']
+            except:
+                recompensa = 0
+        else:
+            limite_diario = 2
+            recompensa = 0
+        
+        # Verificar se é domingo
+        if date.today().weekday() == 6:
+            conn.close()
+            return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
+        
+        # Verificar limite diário
+        tarefas_feitas_hoje = conn.execute('''
+            SELECT COUNT(*) as total FROM tarefas_assistidas 
+            WHERE usuario_id = ? AND date(data_assistida) = date('now')
+        ''', (session['usuario_id'],)).fetchone()['total']
+        
+        if tarefas_feitas_hoje >= limite_diario:
+            conn.close()
+            return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
+        
+        # Buscar o link da tarefa
+        link_tarefa = conn.execute('SELECT url FROM tarefas_multimidia WHERE ativo = 1 LIMIT 1').fetchone()
+        url = link_tarefa['url'] if link_tarefa else 'https://example.com'
+        
+        # Registrar tarefa concluída
+        conn.execute('''
+            INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
+            VALUES (?, ?, ?)
+        ''', (session['usuario_id'], 0, recompensa))
+        
+        # Adicionar saldo
+        conn.execute('''
+            UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
+            WHERE id = ?
+        ''', (recompensa, recompensa, session['usuario_id']))
+        
+        conn.commit()
         conn.close()
-        return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
+        
+        return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
     
-    # Verificar limite diário
-    tarefas_feitas_hoje = conn.execute('''
-        SELECT COUNT(*) as total FROM tarefas_assistidas 
-        WHERE usuario_id = ? AND date(data_assistida) = date('now')
-    ''', (session['usuario_id'],)).fetchone()['total']
-    
-    if tarefas_feitas_hoje >= limite_diario:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
-    
-    # Buscar o link da tarefa
-    link_tarefa = conn.execute('SELECT url FROM tarefas_multimidia WHERE ativo = 1 LIMIT 1').fetchone()
-    url = link_tarefa['url'] if link_tarefa else '#'
-    
-    # Registrar tarefa concluída
-    conn.execute('''
-        INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
-        VALUES (?, ?, ?)
-    ''', (session['usuario_id'], 0, recompensa))
-    
-    # Adicionar saldo
-    conn.execute('''
-        UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
-        WHERE id = ?
-    ''', (recompensa, recompensa, session['usuario_id']))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
+    except Exception as e:
+        print(f"❌ ERRO em /clicar_tarefa: {str(e)}")
+        return jsonify({'sucesso': False, 'erro': str(e)})
 
 @app.route('/depositar', methods=['GET', 'POST'])
 @login_obrigatorio

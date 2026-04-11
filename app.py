@@ -638,21 +638,11 @@ def admin_tarefas():
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
-    pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone, u.convidado_por FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
+    pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
     
     if request.method == 'POST':
-        # Adicionar saldo principal
+        # Apenas adicionar saldo principal - SEM COMISSÃO
         conn.execute('UPDATE usuarios SET saldo_principal = saldo_principal + ? WHERE id = ?', (pedido['valor'], pedido['usuario_id']))
-        
-        # Comissão de 25% para quem convidou (se houver)
-        if pedido['convidado_por']:
-            comissao = pedido['valor'] * 0.25
-            conn.execute('''
-                UPDATE usuarios 
-                SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
-                WHERE codigo_convite = ?
-            ''', (comissao, comissao, pedido['convidado_por']))
-            flash(f'✅ Comissão de {comissao:.2f} MZN enviada para o convidante!', 'info')
         
         conn.execute('UPDATE pedidos_deposito SET status = "confirmado", data_confirmacao = CURRENT_TIMESTAMP WHERE id = ?', (pedido_id,))
         conn.commit()

@@ -741,7 +741,7 @@ def admin_tarefas():
     conn.close()
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
-@app.route('/admin/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
@@ -756,7 +756,7 @@ def confirmar_deposito(pedido_id):
     
     return render_template('confirmar_deposito.html', pedido=pedido)
 
-@app.route('/admin/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_deposito(pedido_id):
     conn = get_db()
@@ -785,7 +785,7 @@ def confirmar_saque(saque_id):
     
     return render_template('confirmar_saque.html', saque=saque)
 
-@app.route('/admin/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_saque(saque_id):
     conn = get_db()
@@ -799,7 +799,7 @@ def rejeitar_saque(saque_id):
     
     return render_template('rejeitar_saque.html', saque=saque)
 
-@app.route('/admin/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
+@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def ajustar_saldo(usuario_id):
     conn = get_db()
@@ -830,7 +830,7 @@ def ajustar_saldo(usuario_id):
     
     return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
 
-@app.route('/admin/deposito_manual', methods=['POST'])
+@app.route('/deposito_manual', methods=['POST'])
 @admin_obrigatorio
 def deposito_manual():
     usuario_id = int(request.form['usuario_id'])
@@ -852,7 +852,7 @@ def deposito_manual():
     flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
     return redirect(url_for('admin_usuarios'))
 
-@app.route('/admin/adicionar_tarefa_multimidia', methods=['POST'])
+@app.route('/adicionar_tarefa_multimidia', methods=['POST'])
 @admin_obrigatorio
 def adicionar_tarefa_multimidia():
     titulo = request.form['titulo']
@@ -874,7 +874,7 @@ def adicionar_tarefa_multimidia():
     flash('✅ Tarefa adicionada!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/admin/remover_tarefa_multimidia/<int:tarefa_id>')
+@app.route('/remover_tarefa_multimidia/<int:tarefa_id>')
 @admin_obrigatorio
 def remover_tarefa_multimidia(tarefa_id):
     conn = get_db()

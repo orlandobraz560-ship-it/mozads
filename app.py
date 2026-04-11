@@ -162,72 +162,130 @@ def api_saldo():
 @app.route('/tarefas')
 @login_obrigatorio
 def tarefas():
+    try:
+        conn = get_db()
+        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+        
+        # Verificar se é domingo
+        from datetime import date
+        hoje = date.today()
+        is_domingo = hoje.weekday() == 6
+        
+        # Buscar nível do usuário
+        nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
+        
+        if nivel_usuario:
+            limite_diario = nivel_usuario['tarefas_por_dia']
+            recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
+        else:
+            limite_diario = 2
+            recompensa_anuncio = 0
+        
+        if is_domingo:
+            limite_diario = 0
+        
+        # Contar tarefas feitas hoje
+        tarefas_feitas_hoje = conn.execute('''
+            SELECT COUNT(*) as total 
+            FROM tarefas_assistidas 
+            WHERE usuario_id = ? AND date(data_assistida) = date('now')
+        ''', (session['usuario_id'],)).fetchone()['total']
+        
+        # Buscar o link da tarefa (você pode cadastrar no admin)
+        link_tarefa = conn.execute('SELECT url FROM tarefas_multimidia WHERE ativo = 1 LIMIT 1').fetchone()
+        url_tarefa = link_tarefa['url'] if link_tarefa else '#'
+        
+        # Buscar todos os níveis para o progresso
+        niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
+        
+        # Calcular progresso
+        progresso = {}
+        for nivel in niveis:
+            nivel_id = nivel['id']
+            total_tarefas_nivel = conn.execute('''
+                SELECT COUNT(*) as total FROM tarefas_multimidia 
+                WHERE nivel_requerido = ? AND ativo = 1
+            ''', (nivel_id,)).fetchone()['total']
+            
+            feitas_nivel = conn.execute('''
+                SELECT COUNT(DISTINCT t.id) as total 
+                FROM tarefas_multimidia t
+                JOIN tarefas_assistidas ut ON t.id = ut.tarefa_id
+                WHERE ut.usuario_id = ? AND t.nivel_requerido = ?
+            ''', (session['usuario_id'], nivel_id)).fetchone()['total']
+            
+            progresso[nivel_id] = {'total': total_tarefas_nivel, 'feitas': feitas_nivel}
+        
+        conn.close()
+        
+        return render_template('tarefas.html', 
+                             usuario=usuario,
+                             niveis=niveis,
+                             progresso=progresso,
+                             tarefas_feitas_hoje=tarefas_feitas_hoje,
+                             limite_diario=limite_diario,
+                             recompensa_anuncio=recompensa_anuncio,
+                             is_domingo=is_domingo,
+                             url_tarefa=url_tarefa)
+    
+    except Exception as e:
+        print(f"❌ ERRO: {str(e)}")
+        flash(f'Erro: {str(e)}', 'erro')
+        return redirect(url_for('painel'))
+
+@app.route('/clicar_tarefa', methods=['POST'])
+@login_obrigatorio
+def clicar_tarefa():
     conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
     
-    # Verificar se é domingo (domingo = 6)
-    hoje = date.today()
-    is_domingo = hoje.weekday() == 6
+    # Buscar nível do usuário
+    usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
     
-    # Buscar nível do usuário com as novas configurações
-    nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
-    
-    if nivel_usuario:
-        limite_diario = nivel_usuario['tarefas_por_dia']
-        recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
+    if nivel_info:
+        limite_diario = nivel_info['tarefas_por_dia']
+        recompensa = nivel_info['recompensa_por_anuncio']
     else:
         limite_diario = 0
-        recompensa_anuncio = 0
+        recompensa = 0
     
-    # Se for domingo, não pode fazer tarefas
-    if is_domingo:
-        limite_diario = 0
+    # Verificar se é domingo
+    from datetime import date
+    if date.today().weekday() == 6:
+        conn.close()
+        return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
     
-    # Contar tarefas feitas HOJE
+    # Verificar limite diário
     tarefas_feitas_hoje = conn.execute('''
-        SELECT COUNT(*) as total 
-        FROM tarefas_assistidas 
+        SELECT COUNT(*) as total FROM tarefas_assistidas 
         WHERE usuario_id = ? AND date(data_assistida) = date('now')
     ''', (session['usuario_id'],)).fetchone()['total']
     
-    # Buscar todos os níveis para o progresso
-    niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
+    if tarefas_feitas_hoje >= limite_diario:
+        conn.close()
+        return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
     
-    # Calcular progresso por nível
-    progresso = {}
-    for nivel in niveis:
-        nivel_id = nivel['id']
-        
-        # Total de tarefas deste nível
-        total_tarefas_nivel = conn.execute('''
-            SELECT COUNT(*) as total FROM tarefas_multimidia 
-            WHERE nivel_requerido = ? AND ativo = 1
-        ''', (nivel_id,)).fetchone()['total']
-        
-        # Tarefas já feitas pelo usuário neste nível
-        feitas_nivel = conn.execute('''
-            SELECT COUNT(DISTINCT t.id) as total 
-            FROM tarefas_multimidia t
-            JOIN tarefas_assistidas ut ON t.id = ut.tarefa_id
-            WHERE ut.usuario_id = ? AND t.nivel_requerido = ?
-        ''', (session['usuario_id'], nivel_id)).fetchone()['total']
-        
-        progresso[nivel_id] = {
-            'total': total_tarefas_nivel, 
-            'feitas': feitas_nivel
-        }
+    # Buscar o link da tarefa
+    link_tarefa = conn.execute('SELECT url FROM tarefas_multimidia WHERE ativo = 1 LIMIT 1').fetchone()
+    url = link_tarefa['url'] if link_tarefa else '#'
     
+    # Registrar tarefa concluída
+    conn.execute('''
+        INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
+        VALUES (?, ?, ?)
+    ''', (session['usuario_id'], 0, recompensa))
+    
+    # Adicionar saldo
+    conn.execute('''
+        UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
+        WHERE id = ?
+    ''', (recompensa, recompensa, session['usuario_id']))
+    
+    conn.commit()
     conn.close()
     
-    return render_template('tarefas.html', 
-                         usuario=usuario,
-                         niveis=niveis,
-                         progresso=progresso,
-                         tarefas_feitas_hoje=tarefas_feitas_hoje,
-                         limite_diario=limite_diario,
-                         recompensa_anuncio=recompensa_anuncio,
-                         is_domingo=is_domingo)
-
+    return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
+        
 @app.route('/assistir_tarefa_anuncio', methods=['POST'])
 @login_obrigatorio
 def assistir_tarefa_anuncio():

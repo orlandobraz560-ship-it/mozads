@@ -17,40 +17,48 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # Criar pasta para comprovantes
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
-
-# ==================== FUNÇÃO PARA CRIAR BANCO DE DADOS ====================
 def criar_banco_se_necessario():
-    """Cria o banco de dados se não existir"""
+    """Cria o banco de dados se não existir ou se as tabelas estiverem incompletas"""
+    
+# Verificar se o banco existe
     if not os.path.exists('database.db'):
-        print("=" * 50)
-        print("📌 Banco de dados não encontrado!")
-        print("🔄 Criando banco de dados...")
-        print("=" * 50)
-        
+        print("📌 Banco de dados não encontrado. Criando...")
+        criar_banco_completo()
+    else:
+        # Verificar se as colunas necessárias existem
         try:
-            # Executar o init_db.py
-            result = subprocess.run([sys.executable, 'init_db.py'], capture_output=True, text=True)
+            conn = sqlite3.connect('database.db')
+            cursor = conn.cursor()
             
-            if result.returncode == 0:
-                print("✅ Banco de dados criado com sucesso!")
-                print(result.stdout)
+            # Verificar colunas da tabela niveis
+            cursor.execute("PRAGMA table_info(niveis)")
+            colunas = [c[1] for c in cursor.fetchall()]
+            
+            precisa_recriar = False
+            
+            if 'tarefas_por_dia' not in colunas:
+                print("⚠️ Coluna 'tarefas_por_dia' não encontrada. Recriando banco...")
+                precisa_recriar = True
+            if 'recompensa_por_anuncio' not in colunas:
+                print("⚠️ Coluna 'recompensa_por_anuncio' não encontrada. Recriando banco...")
+                precisa_recriar = True
+            
+            conn.close()
+            
+            if precisa_recriar:
+                os.remove('database.db')
+                criar_banco_completo()
             else:
-                print("❌ Erro ao criar banco de dados:")
-                print(result.stderr)
-                
-                # Tentar criar diretamente com SQL
-                criar_banco_direto()
+                print("✅ Banco de dados OK!")
                 
         except Exception as e:
-            print(f"❌ Erro ao executar init_db.py: {str(e)}")
-            criar_banco_direto()
-    else:
-        print("✅ Banco de dados já existe!")
-        # Verificar se as tabelas estão corretas
-        verificar_tabelas()
+            print(f"❌ Erro ao verificar banco: {e}")
+            if os.path.exists('database.db'):
+                os.remove('database.db')
+            criar_banco_completo()
 
-def criar_banco_direto():
-    """Cria o banco de dados diretamente se o init_db.py falhar"""
+def criar_banco_completo():
+    """Cria o banco de dados completo"""
     try:
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
@@ -81,7 +89,7 @@ def criar_banco_direto():
         )
         ''')
         
-        # Criar tabela de níveis
+        # Criar tabela de níveis (com as colunas corretas)
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS niveis (
             id INTEGER PRIMARY KEY,
@@ -192,21 +200,21 @@ def criar_banco_direto():
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', ("Administrador", "admin@admin.com", senha_hash, codigo_admin, 1, 0, "Admin"))
         
-        # Inserir tarefa padrão (link de anúncio)
+        # Inserir tarefa padrão
         cursor.execute('SELECT id FROM tarefas_multimidia LIMIT 1')
         if not cursor.fetchone():
             cursor.execute('''
-            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ("Anúncio Diário", "Clique para assistir e ganhar", "link", "https://example.com/anuncio", 10, 30, 1))
+            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido, ativo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', ("Anúncio Diário", "Clique para assistir e ganhar", "link", "https://www.google.com", 10, 30, 1, 1))
         
         conn.commit()
         conn.close()
         
-        print("✅ Banco de dados criado diretamente com sucesso!")
+        print("✅ Banco de dados criado com sucesso!")
         
     except Exception as e:
-        print(f"❌ Erro ao criar banco diretamente: {str(e)}")
+        print(f"❌ Erro ao criar banco: {str(e)}")
 
 def verificar_tabelas():
     """Verifica se as tabelas necessárias existem"""

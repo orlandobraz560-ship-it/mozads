@@ -4,17 +4,232 @@ import hashlib
 import secrets
 import os
 import json
+import subprocess
+import sys
 from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = "sua_chave_secreta_mude_para_algo_seguro_123456"
+app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_mude_para_algo_seguro_123456')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+# Criar pasta para comprovantes
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
 
+# ==================== FUNÇÃO PARA CRIAR BANCO DE DADOS ====================
+def criar_banco_se_necessario():
+    """Cria o banco de dados se não existir"""
+    if not os.path.exists('database.db'):
+        print("=" * 50)
+        print("📌 Banco de dados não encontrado!")
+        print("🔄 Criando banco de dados...")
+        print("=" * 50)
+        
+        try:
+            # Executar o init_db.py
+            result = subprocess.run([sys.executable, 'init_db.py'], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print("✅ Banco de dados criado com sucesso!")
+                print(result.stdout)
+            else:
+                print("❌ Erro ao criar banco de dados:")
+                print(result.stderr)
+                
+                # Tentar criar diretamente com SQL
+                criar_banco_direto()
+                
+        except Exception as e:
+            print(f"❌ Erro ao executar init_db.py: {str(e)}")
+            criar_banco_direto()
+    else:
+        print("✅ Banco de dados já existe!")
+        # Verificar se as tabelas estão corretas
+        verificar_tabelas()
+
+def criar_banco_direto():
+    """Cria o banco de dados diretamente se o init_db.py falhar"""
+    try:
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        
+        # Criar tabela de usuários
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            telefone TEXT,
+            senha TEXT NOT NULL,
+            codigo_convite TEXT UNIQUE NOT NULL,
+            convidado_por TEXT,
+            nivel INTEGER DEFAULT 0,
+            nivel_nome TEXT DEFAULT 'Estagiário',
+            validade_inicio TEXT,
+            validade_fim TEXT,
+            saldo_principal REAL DEFAULT 0,
+            saldo_comissao REAL DEFAULT 0,
+            ganhos_hoje REAL DEFAULT 0,
+            ganhos_ontem REAL DEFAULT 0,
+            ganhos_semana REAL DEFAULT 0,
+            ganhos_mes REAL DEFAULT 0,
+            ganhos_total REAL DEFAULT 0,
+            is_admin INTEGER DEFAULT 0,
+            data_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
+        # Criar tabela de níveis
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS niveis (
+            id INTEGER PRIMARY KEY,
+            nome TEXT,
+            investimento REAL,
+            tarefas_por_dia INTEGER DEFAULT 0,
+            recompensa_por_anuncio REAL DEFAULT 0,
+            duracao_dias INTEGER DEFAULT 180
+        )
+        ''')
+        
+        # Inserir níveis
+        niveis = [
+            (0, 'Estagiário', 0, 2, 0, 180),
+            (1, 'VIP 1', 600, 5, 4, 180),
+            (2, 'VIP 2', 3000, 10, 10, 180),
+            (3, 'VIP 3', 12000, 10, 40, 180),
+            (4, 'VIP 4', 30000, 10, 100, 180),
+            (5, 'VIP 5', 90000, 20, 100, 180),
+            (6, 'VIP 6', 300000, 20, 500, 180),
+            (7, 'VIP 7', 900000, 20, 1500, 180),
+        ]
+        cursor.executemany('INSERT OR IGNORE INTO niveis (id, nome, investimento, tarefas_por_dia, recompensa_por_anuncio, duracao_dias) VALUES (?, ?, ?, ?, ?, ?)', niveis)
+        
+        # Criar tabela de pedidos de depósito
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pedidos_deposito (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            valor REAL,
+            nivel_desejado INTEGER,
+            comprovante TEXT,
+            metodo_pagamento TEXT,
+            numero_pagamento TEXT,
+            nome_titular TEXT,
+            status TEXT DEFAULT 'pendente',
+            data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_confirmacao TIMESTAMP
+        )
+        ''')
+        
+        # Criar tabela de pedidos de saque
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pedidos_saque (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            valor REAL,
+            valor_liquido REAL,
+            taxa REAL,
+            metodo TEXT,
+            numero_conta TEXT,
+            nome_titular TEXT,
+            email_paypal TEXT,
+            status TEXT DEFAULT 'pendente',
+            data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            data_processamento TIMESTAMP,
+            observacao TEXT
+        )
+        ''')
+        
+        # Criar tabela de tarefas multimídia
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tarefas_multimidia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            descricao TEXT,
+            tipo TEXT DEFAULT 'video',
+            url TEXT NOT NULL,
+            thumbnail TEXT,
+            recompensa REAL NOT NULL,
+            duracao_segundos INTEGER DEFAULT 30,
+            nivel_requerido INTEGER DEFAULT 1,
+            ativo INTEGER DEFAULT 1,
+            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
+        # Criar tabela de tarefas assistidas
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tarefas_assistidas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            tarefa_id INTEGER,
+            data_assistida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ganho REAL
+        )
+        ''')
+        
+        # Criar tabela de ganhos diários
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ganhos_diarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            data DATE,
+            valor REAL,
+            pago INTEGER DEFAULT 0
+        )
+        ''')
+        
+        # Criar admin padrão
+        senha_hash = hashlib.sha256("admin123".encode()).hexdigest()
+        codigo_admin = "ADMIN001"
+        
+        cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@admin.com',))
+        if not cursor.fetchone():
+            cursor.execute('''
+            INSERT INTO usuarios (nome, email, senha, codigo_convite, is_admin, nivel, nivel_nome)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ("Administrador", "admin@admin.com", senha_hash, codigo_admin, 1, 0, "Admin"))
+        
+        # Inserir tarefa padrão (link de anúncio)
+        cursor.execute('SELECT id FROM tarefas_multimidia LIMIT 1')
+        if not cursor.fetchone():
+            cursor.execute('''
+            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ("Anúncio Diário", "Clique para assistir e ganhar", "link", "https://example.com/anuncio", 10, 30, 1))
+        
+        conn.commit()
+        conn.close()
+        
+        print("✅ Banco de dados criado diretamente com sucesso!")
+        
+    except Exception as e:
+        print(f"❌ Erro ao criar banco diretamente: {str(e)}")
+
+def verificar_tabelas():
+    """Verifica se as tabelas necessárias existem"""
+    try:
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        
+        tabelas = ['usuarios', 'niveis', 'pedidos_deposito', 'pedidos_saque', 'tarefas_multimidia', 'tarefas_assistidas']
+        for tabela in tabelas:
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabela}'")
+            if not cursor.fetchone():
+                print(f"⚠️ Tabela {tabela} não encontrada! Recriando...")
+                criar_banco_direto()
+                break
+        
+        conn.close()
+    except Exception as e:
+        print(f"❌ Erro ao verificar tabelas: {str(e)}")
+
+# Executar criação do banco na inicialização
+criar_banco_se_necessario()
+
+# ==================== FUNÇÕES AUXILIARES ====================
 def get_db():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
@@ -43,6 +258,8 @@ def admin_obrigatorio(f):
             return redirect(url_for('painel'))
         return f(*args, **kwargs)
     return decorated_function
+
+# ==================== ROTAS PRINCIPAIS ====================
 
 @app.route('/')
 def index():
@@ -167,7 +384,6 @@ def tarefas():
         usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
         
         # Verificar se é domingo
-        from datetime import date
         hoje = date.today()
         is_domingo = hoje.weekday() == 6
         
@@ -191,11 +407,7 @@ def tarefas():
             WHERE usuario_id = ? AND date(data_assistida) = date('now')
         ''', (session['usuario_id'],)).fetchone()['total']
         
-        # Buscar o link da tarefa (você pode cadastrar no admin)
-        link_tarefa = conn.execute('SELECT url FROM tarefas_multimidia WHERE ativo = 1 LIMIT 1').fetchone()
-        url_tarefa = link_tarefa['url'] if link_tarefa else '#'
-        
-        # Buscar todos os níveis para o progresso
+        # Buscar todos os níveis
         niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
         
         # Calcular progresso
@@ -225,11 +437,10 @@ def tarefas():
                              tarefas_feitas_hoje=tarefas_feitas_hoje,
                              limite_diario=limite_diario,
                              recompensa_anuncio=recompensa_anuncio,
-                             is_domingo=is_domingo,
-                             url_tarefa=url_tarefa)
+                             is_domingo=is_domingo)
     
     except Exception as e:
-        print(f"❌ ERRO: {str(e)}")
+        print(f"❌ ERRO em /tarefas: {str(e)}")
         flash(f'Erro: {str(e)}', 'erro')
         return redirect(url_for('painel'))
 
@@ -250,7 +461,6 @@ def clicar_tarefa():
         recompensa = 0
     
     # Verificar se é domingo
-    from datetime import date
     if date.today().weekday() == 6:
         conn.close()
         return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
@@ -285,55 +495,6 @@ def clicar_tarefa():
     conn.close()
     
     return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
-        
-@app.route('/assistir_tarefa_anuncio', methods=['POST'])
-@login_obrigatorio
-def assistir_tarefa_anuncio():
-    conn = get_db()
-    
-    # Buscar nível do usuário
-    usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
-    
-    if nivel_info:
-        limite_diario = nivel_info['tarefas_por_dia']
-        recompensa = nivel_info['recompensa_por_anuncio']
-    else:
-        limite_diario = 0
-        recompensa = 0
-    
-    # Verificar se é domingo
-    hoje = date.today()
-    if hoje.weekday() == 6:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
-    
-    # Verificar limite diário
-    tarefas_feitas_hoje = conn.execute('''
-        SELECT COUNT(*) as total FROM tarefas_assistidas 
-        WHERE usuario_id = ? AND date(data_assistida) = date('now')
-    ''', (session['usuario_id'],)).fetchone()['total']
-    
-    if tarefas_feitas_hoje >= limite_diario:
-        conn.close()
-        return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
-    
-    # Registrar anúncio assistido
-    conn.execute('''
-        INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
-        VALUES (?, ?, ?)
-    ''', (session['usuario_id'], 0, recompensa))
-    
-    # Adicionar saldo à comissão
-    conn.execute('''
-        UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
-        WHERE id = ?
-    ''', (recompensa, recompensa, session['usuario_id']))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'sucesso': True, 'recompensa': recompensa})
 
 @app.route('/depositar', methods=['GET', 'POST'])
 @login_obrigatorio
@@ -580,7 +741,7 @@ def admin_tarefas():
     conn.close()
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
-@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):
     conn = get_db()
@@ -595,7 +756,7 @@ def confirmar_deposito(pedido_id):
     
     return render_template('confirmar_deposito.html', pedido=pedido)
 
-@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_deposito(pedido_id):
     conn = get_db()
@@ -609,7 +770,7 @@ def rejeitar_deposito(pedido_id):
     
     return render_template('rejeitar_deposito.html', pedido=pedido)
 
-@app.route('/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_saque(saque_id):
     conn = get_db()
@@ -624,7 +785,7 @@ def confirmar_saque(saque_id):
     
     return render_template('confirmar_saque.html', saque=saque)
 
-@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@app.route('/admin/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def rejeitar_saque(saque_id):
     conn = get_db()
@@ -638,7 +799,7 @@ def rejeitar_saque(saque_id):
     
     return render_template('rejeitar_saque.html', saque=saque)
 
-@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
+@app.route('/admin/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def ajustar_saldo(usuario_id):
     conn = get_db()
@@ -669,7 +830,7 @@ def ajustar_saldo(usuario_id):
     
     return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
 
-@app.route('/deposito_manual', methods=['POST'])
+@app.route('/admin/deposito_manual', methods=['POST'])
 @admin_obrigatorio
 def deposito_manual():
     usuario_id = int(request.form['usuario_id'])
@@ -691,7 +852,7 @@ def deposito_manual():
     flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
     return redirect(url_for('admin_usuarios'))
 
-@app.route('/adicionar_tarefa_multimidia', methods=['POST'])
+@app.route('/admin/adicionar_tarefa_multimidia', methods=['POST'])
 @admin_obrigatorio
 def adicionar_tarefa_multimidia():
     titulo = request.form['titulo']
@@ -713,7 +874,7 @@ def adicionar_tarefa_multimidia():
     flash('✅ Tarefa adicionada!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
-@app.route('/remover_tarefa_multimidia/<int:tarefa_id>')
+@app.route('/admin/remover_tarefa_multimidia/<int:tarefa_id>')
 @admin_obrigatorio
 def remover_tarefa_multimidia(tarefa_id):
     conn = get_db()
@@ -723,21 +884,15 @@ def remover_tarefa_multimidia(tarefa_id):
     flash('❌ Tarefa removida!', 'erro')
     return redirect(url_for('admin_tarefas'))
 
+# ==================== INICIALIZAÇÃO ====================
 if __name__ == '__main__':
-    import socket
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname)
+    PORT = int(os.environ.get('PORT', 5000))
     
     print("=" * 60)
     print("🚀 SERVIDOR INICIADO COM SUCESSO!")
     print("=" * 60)
-    print("📍 ACESSOS:")
-    print(f"   • Local: http://localhost:5000")
-    print(f"   • Rede: http://{local_ip}:5000")
-    print("=" * 60)
-    print("👑 ACESSO ADMIN:")
-    print("   • Email: admin@admin.com")
-    print("   • Senha: admin123")
+    print(f"📍 Acesse: http://localhost:{PORT}")
+    print("👑 Admin: admin@admin.com / admin123")
     print("=" * 60)
     
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=PORT)

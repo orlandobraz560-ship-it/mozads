@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-import sqlite3
 import hashlib
 import secrets
 import os
@@ -19,78 +18,124 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Criar pasta para comprovantes
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# ==================== CORREÇÃO AUTOMÁTICA DO BANCO ====================
-def corrigir_banco_automaticamente():
-    """Corrige o banco de dados automaticamente sem apagar dados"""
-    try:
-        # Se o banco não existir, NÃO FAZ NADA
-        if not os.path.exists('database.db'):
-            print("⚠️ Banco de dados não encontrado! Execute init_db.py manualmente.")
-            return  # Sair sem criar nada
-        
-        # Se existe, apenas verificar e ajustar colunas
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        
-        # Verificar colunas da tabela usuarios
-        cursor.execute("PRAGMA table_info(usuarios)")
-        colunas = [c[1] for c in cursor.fetchall()]
-        
-        # Apenas ADICIONAR colunas faltantes, NUNCA apagar dados
-        colunas_necessarias = {
-            'telefone': 'TEXT',
-            'validade_inicio': 'TEXT',
-            'validade_fim': 'TEXT',
-            'ganhos_hoje': 'REAL DEFAULT 0',
-            'ganhos_ontem': 'REAL DEFAULT 0',
-            'ganhos_semana': 'REAL DEFAULT 0',
-            'ganhos_mes': 'REAL DEFAULT 0',
-            'ganhos_total': 'REAL DEFAULT 0'
+# ==================== ARQUIVO JSON ====================
+
+DADOS_JSON = 'dados.json'
+
+def carregar_dados():
+    """Carrega os dados do arquivo JSON"""
+    if not os.path.exists(DADOS_JSON):
+        # Criar arquivo padrão
+        dados_padrao = {
+            "usuarios": [
+                {
+                    "id": 1,
+                    "nome": "Administrador",
+                    "email": "admin@admin.com",
+                    "telefone": "",
+                    "senha": hashlib.sha256("admin123".encode()).hexdigest(),
+                    "codigo_convite": "ADMIN001",
+                    "convidado_por": None,
+                    "nivel": 0,
+                    "nivel_nome": "Admin",
+                    "saldo_principal": 0,
+                    "saldo_comissao": 0,
+                    "is_admin": 1,
+                    "data_registro": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                }
+            ],
+            "niveis": [
+                {"id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 2, "recompensa_por_anuncio": 0, "duracao_dias": 180},
+                {"id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180},
+                {"id": 2, "nome": "VIP 2", "investimento": 3000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 10, "duracao_dias": 180},
+                {"id": 3, "nome": "VIP 3", "investimento": 12000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 40, "duracao_dias": 180},
+                {"id": 4, "nome": "VIP 4", "investimento": 30000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 100, "duracao_dias": 180},
+                {"id": 5, "nome": "VIP 5", "investimento": 90000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 100, "duracao_dias": 180},
+                {"id": 6, "nome": "VIP 6", "investimento": 300000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 500, "duracao_dias": 180},
+                {"id": 7, "nome": "VIP 7", "investimento": 900000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 1500, "duracao_dias": 180}
+            ],
+            "pedidos_deposito": [],
+            "pedidos_saque": [],
+            "tarefas_multimidia": [
+                {"id": 1, "titulo": "Anúncio Diário", "descricao": "Clique para assistir e ganhar", "tipo": "link", "url": "https://omg10.com/4/10861968", "recompensa": 10, "duracao_segundos": 30, "nivel_requerido": 1, "ativo": 1}
+            ],
+            "tarefas_assistidas": [],
+            "produtos": [
+                {"id": 1, "nome": "Smartphone XYZ", "descricao": "Smartphone de última geração", "preco": 5000, "imagem": "https://placehold.co/400x400/667eea/white?text=Smartphone", "categoria": "eletronicos", "ativo": 1},
+                {"id": 2, "nome": "Fones Bluetooth", "descricao": "Fones de ouvido sem fio", "preco": 800, "imagem": "https://placehold.co/400x400/667eea/white?text=Fones", "categoria": "eletronicos", "ativo": 1},
+                {"id": 3, "nome": "Camiseta Premium", "descricao": "Camiseta 100% algodão", "preco": 300, "imagem": "https://placehold.co/400x400/667eea/white?text=Camiseta", "categoria": "moda", "ativo": 1},
+                {"id": 4, "nome": "Tênis Esportivo", "descricao": "Tênis confortável", "preco": 1200, "imagem": "https://placehold.co/400x400/667eea/white?text=Tênis", "categoria": "moda", "ativo": 1},
+                {"id": 5, "nome": "Voucher Amazon", "descricao": "Voucher de 100 MZN", "preco": 100, "imagem": "https://placehold.co/400x400/667eea/white?text=Voucher", "categoria": "vouchers", "ativo": 1}
+            ],
+            "compras": []
         }
-        
-        for coluna, tipo in colunas_necessarias.items():
-            if coluna not in colunas:
-                try:
-                    cursor.execute(f'ALTER TABLE usuarios ADD COLUMN {coluna} {tipo}')
-                    print(f'✅ Coluna {coluna} adicionada')
-                except:
-                    pass
-        
-        # Verificar colunas da tabela niveis
-        cursor.execute("PRAGMA table_info(niveis)")
-        colunas_niveis = [c[1] for c in cursor.fetchall()]
-        
-        if 'tarefas_por_dia' not in colunas_niveis:
-            cursor.execute('ALTER TABLE niveis ADD COLUMN tarefas_por_dia INTEGER DEFAULT 0')
-        
-        if 'recompensa_por_anuncio' not in colunas_niveis:
-            cursor.execute('ALTER TABLE niveis ADD COLUMN recompensa_por_anuncio REAL DEFAULT 0')
-        
-        # NUNCA atualizar valores dos níveis (isso pode corromper)
-        # Remova a parte que atualiza os níveis
-        
-        conn.commit()
-        conn.close()
-        print('✅ Banco de dados verificado (sem recriação)!')
-        
-    except Exception as e:
-        print(f'❌ Erro na correção do banco: {e}')
-        
-corrigir_banco_automaticamente()
+        salvar_dados(dados_padrao)
+        return dados_padrao
+    
+    with open(DADOS_JSON, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def salvar_dados(dados):
+    """Salva os dados no arquivo JSON"""
+    with open(DADOS_JSON, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+def get_next_id(lista):
+    """Retorna o próximo ID disponível"""
+    if not lista:
+        return 1
+    return max(item['id'] for item in lista) + 1
+
+def get_usuario_por_email(email):
+    """Busca usuário por email"""
+    dados = carregar_dados()
+    for usuario in dados['usuarios']:
+        if usuario['email'] == email:
+            return usuario
+    return None
+
+def get_usuario_por_id(usuario_id):
+    """Busca usuário por ID"""
+    dados = carregar_dados()
+    for usuario in dados['usuarios']:
+        if usuario['id'] == usuario_id:
+            return usuario
+    return None
+
+def get_usuario_por_codigo(codigo):
+    """Busca usuário por código de convite"""
+    dados = carregar_dados()
+    for usuario in dados['usuarios']:
+        if usuario['codigo_convite'] == codigo:
+            return usuario
+    return None
+
+def atualizar_usuario(usuario_id, campos):
+    """Atualiza campos de um usuário"""
+    dados = carregar_dados()
+    for i, usuario in enumerate(dados['usuarios']):
+        if usuario['id'] == usuario_id:
+            for key, value in campos.items():
+                dados['usuarios'][i][key] = value
+            salvar_dados(dados)
+            return True
+    return False
+
+def get_nivel_por_id(nivel_id):
+    """Busca nível por ID"""
+    dados = carregar_dados()
+    for nivel in dados['niveis']:
+        if nivel['id'] == nivel_id:
+            return nivel
+    return None
 
 # ==================== FUNÇÕES AUXILIARES ====================
-
-def get_db():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def login_obrigatorio(f):
     @wraps(f)
@@ -107,9 +152,7 @@ def admin_obrigatorio(f):
         if 'usuario_id' not in session:
             flash('Faça login primeiro', 'erro')
             return redirect(url_for('login'))
-        conn = get_db()
-        usuario = conn.execute('SELECT is_admin FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        conn.close()
+        usuario = get_usuario_por_id(session['usuario_id'])
         if not usuario or usuario['is_admin'] != 1:
             flash('Acesso negado. Área administrativa.', 'erro')
             return redirect(url_for('painel'))
@@ -127,50 +170,54 @@ def cadastro():
     codigo_ref = request.args.get('ref', '')
     
     if request.method == 'POST':
-        try:
-            nome = request.form['nome']
-            email = request.form['email']
-            telefone = request.form.get('telefone', '')
-            senha = request.form['senha']
-            codigo_convite = request.form.get('codigo_convite', '') or codigo_ref
-            
-            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-            codigo_proprio = secrets.token_hex(4).upper()
-            
-            conn = get_db()
-            
-            convidado_por = None
-            nome_convidante = None
-            if codigo_convite:
-                convite_valido = conn.execute('SELECT id, nome FROM usuarios WHERE codigo_convite = ?', (codigo_convite,)).fetchone()
-                if convite_valido:
-                    convidado_por = codigo_convite
-                    nome_convidante = convite_valido['nome']
-            
-            validade_fim = (datetime.now() + timedelta(days=180)).strftime('%Y-%m-%d')
-            
-            conn.execute('''
-                INSERT INTO usuarios (nome, email, telefone, senha, codigo_convite, convidado_por, validade_inicio, validade_fim)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (nome, email, telefone, senha_hash, codigo_proprio, convidado_por, 
-                  datetime.now().strftime('%Y-%m-%d'), validade_fim))
-            conn.commit()
-            
-            if nome_convidante:
-                flash(f'✅ Cadastro realizado! Você foi convidado por {nome_convidante}', 'sucesso')
-            else:
-                flash('Cadastro realizado com sucesso! Faça login.', 'sucesso')
-            
-            conn.close()
-            return redirect(url_for('login'))
-            
-        except sqlite3.IntegrityError:
+        nome = request.form['nome']
+        email = request.form['email']
+        telefone = request.form.get('telefone', '')
+        senha = request.form['senha']
+        codigo_convite = request.form.get('codigo_convite', '') or codigo_ref
+        
+        senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+        codigo_proprio = secrets.token_hex(4).upper()
+        
+        dados = carregar_dados()
+        
+        if get_usuario_por_email(email):
             flash('Email já cadastrado!', 'erro')
             return redirect(url_for('cadastro'))
-        except Exception as e:
-            print(f"❌ Erro no cadastro: {str(e)}")
-            flash(f'Erro ao cadastrar: {str(e)}', 'erro')
-            return redirect(url_for('cadastro'))
+        
+        convidado_por = None
+        nome_convidante = None
+        if codigo_convite:
+            convidante = get_usuario_por_codigo(codigo_convite)
+            if convidante:
+                convidado_por = codigo_convite
+                nome_convidante = convidante['nome']
+        
+        novo_usuario = {
+            "id": get_next_id(dados['usuarios']),
+            "nome": nome,
+            "email": email,
+            "telefone": telefone,
+            "senha": senha_hash,
+            "codigo_convite": codigo_proprio,
+            "convidado_por": convidado_por,
+            "nivel": 0,
+            "nivel_nome": "Estagiário",
+            "saldo_principal": 0,
+            "saldo_comissao": 0,
+            "is_admin": 0,
+            "data_registro": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        dados['usuarios'].append(novo_usuario)
+        salvar_dados(dados)
+        
+        if nome_convidante:
+            flash(f'✅ Cadastro realizado! Você foi convidado por {nome_convidante}', 'sucesso')
+        else:
+            flash('Cadastro realizado com sucesso! Faça login.', 'sucesso')
+        
+        return redirect(url_for('login'))
     
     return render_template('cadastro.html', codigo_ref=codigo_ref)
 
@@ -181,11 +228,9 @@ def login():
         senha = request.form['senha']
         senha_hash = hashlib.sha256(senha.encode()).hexdigest()
         
-        conn = get_db()
-        usuario = conn.execute('SELECT * FROM usuarios WHERE email = ? AND senha = ?', (email, senha_hash)).fetchone()
-        conn.close()
+        usuario = get_usuario_por_email(email)
         
-        if usuario:
+        if usuario and usuario['senha'] == senha_hash:
             session['usuario_id'] = usuario['id']
             session['usuario_nome'] = usuario['nome']
             session['is_admin'] = usuario['is_admin']
@@ -209,20 +254,17 @@ def logout():
 @app.route('/painel')
 @login_obrigatorio
 def painel():
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    dados = carregar_dados()
     
-    total_convidados = conn.execute('SELECT COUNT(*) as total FROM usuarios WHERE convidado_por = ?', 
-                                    (usuario['codigo_convite'],)).fetchone()['total']
+    total_convidados = sum(1 for u in dados['usuarios'] if u['convidado_por'] == usuario['codigo_convite'])
     
-    comissao_indicacao = conn.execute('''
-        SELECT COALESCE(SUM(p.valor * 0.25), 0) as total 
-        FROM pedidos_deposito p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE u.convidado_por = ? AND p.status = 'confirmado'
-    ''', (usuario['codigo_convite'],)).fetchone()['total']
-    
-    conn.close()
+    comissao_indicacao = 0
+    for pedido in dados['pedidos_deposito']:
+        if pedido['status'] == 'confirmado':
+            for u in dados['usuarios']:
+                if u['id'] == pedido['usuario_id'] and u['convidado_por'] == usuario['codigo_convite']:
+                    comissao_indicacao += pedido['valor'] * 0.25
     
     return render_template('painel.html', usuario=usuario, 
                           total_convidados=total_convidados, comissao_indicacao=comissao_indicacao)
@@ -230,9 +272,7 @@ def painel():
 @app.route('/api/saldo')
 @login_obrigatorio
 def api_saldo():
-    conn = get_db()
-    usuario = conn.execute('SELECT saldo_principal, saldo_comissao FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    conn.close()
+    usuario = get_usuario_por_id(session['usuario_id'])
     return jsonify({
         'saldo_principal': usuario['saldo_principal'],
         'saldo_comissao': usuario['saldo_comissao'],
@@ -243,17 +283,17 @@ def api_saldo():
 @login_obrigatorio
 def tarefas():
     try:
-        conn = get_db()
-        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+        usuario = get_usuario_por_id(session['usuario_id'])
+        dados = carregar_dados()
         
         hoje = date.today()
         is_domingo = hoje.weekday() == 6
         
-        nivel_usuario = conn.execute('SELECT * FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
+        nivel_usuario = get_nivel_por_id(usuario['nivel'])
         
         if nivel_usuario:
-            limite_diario = nivel_usuario['tarefas_por_dia'] if nivel_usuario['tarefas_por_dia'] else 2
-            recompensa_anuncio = nivel_usuario['recompensa_por_anuncio'] if nivel_usuario['recompensa_por_anuncio'] else 0
+            limite_diario = nivel_usuario['tarefas_por_dia']
+            recompensa_anuncio = nivel_usuario['recompensa_por_anuncio']
         else:
             limite_diario = 2
             recompensa_anuncio = 0
@@ -261,32 +301,20 @@ def tarefas():
         if is_domingo:
             limite_diario = 0
         
-        tarefas_feitas_hoje = conn.execute('''
-            SELECT COUNT(*) as total 
-            FROM tarefas_assistidas 
-            WHERE usuario_id = ? AND date(data_assistida) = date('now')
-        ''', (session['usuario_id'],)).fetchone()['total']
+        tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas'] 
+                                  if t['usuario_id'] == session['usuario_id'] 
+                                  and t['data_assistida'].startswith(hoje.strftime('%Y-%m-%d')))
         
-        niveis = conn.execute('SELECT * FROM niveis ORDER BY id').fetchall()
+        niveis = dados['niveis']
         
         progresso = {}
         for nivel in niveis:
             nivel_id = nivel['id']
-            total_tarefas_nivel = conn.execute('''
-                SELECT COUNT(*) as total FROM tarefas_multimidia 
-                WHERE nivel_requerido = ? AND ativo = 1
-            ''', (nivel_id,)).fetchone()['total']
-            
-            feitas_nivel = conn.execute('''
-                SELECT COUNT(DISTINCT t.id) as total 
-                FROM tarefas_multimidia t
-                JOIN tarefas_assistidas ut ON t.id = ut.tarefa_id
-                WHERE ut.usuario_id = ? AND t.nivel_requerido = ?
-            ''', (session['usuario_id'], nivel_id)).fetchone()['total']
-            
+            total_tarefas_nivel = sum(1 for t in dados['tarefas_multimidia'] if t['nivel_requerido'] == nivel_id and t['ativo'] == 1)
+            feitas_nivel = sum(1 for t in dados['tarefas_assistidas'] 
+                              if t['usuario_id'] == session['usuario_id']
+                              and any(tm['id'] == t['tarefa_id'] and tm['nivel_requerido'] == nivel_id for tm in dados['tarefas_multimidia']))
             progresso[nivel_id] = {'total': total_tarefas_nivel, 'feitas': feitas_nivel}
-        
-        conn.close()
         
         return render_template('tarefas.html', 
                              usuario=usuario,
@@ -306,45 +334,46 @@ def tarefas():
 @login_obrigatorio
 def clicar_tarefa():
     try:
-        conn = get_db()
+        usuario = get_usuario_por_id(session['usuario_id'])
+        dados = carregar_dados()
         
         URL_FIXO = "https://omg10.com/4/10861968"
         
-        usuario = conn.execute('SELECT nivel FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        nivel_info = conn.execute('SELECT tarefas_por_dia, recompensa_por_anuncio FROM niveis WHERE id = ?', (usuario['nivel'],)).fetchone()
+        nivel_usuario = get_nivel_por_id(usuario['nivel'])
         
-        if nivel_info:
-            limite_diario = nivel_info['tarefas_por_dia'] if nivel_info['tarefas_por_dia'] else 2
-            recompensa = nivel_info['recompensa_por_anuncio'] if nivel_info['recompensa_por_anuncio'] else 0
+        if nivel_usuario:
+            limite_diario = nivel_usuario['tarefas_por_dia']
+            recompensa = nivel_usuario['recompensa_por_anuncio']
         else:
             limite_diario = 2
             recompensa = 0
         
         if date.today().weekday() == 6:
-            conn.close()
             return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
         
-        tarefas_feitas_hoje = conn.execute('''
-            SELECT COUNT(*) as total FROM tarefas_assistidas 
-            WHERE usuario_id = ? AND date(data_assistida) = date('now')
-        ''', (session['usuario_id'],)).fetchone()['total']
+        tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas'] 
+                                  if t['usuario_id'] == session['usuario_id'] 
+                                  and t['data_assistida'].startswith(date.today().strftime('%Y-%m-%d')))
         
         if tarefas_feitas_hoje >= limite_diario:
-            conn.close()
             return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
         
-        conn.execute('''
-            INSERT INTO tarefas_assistidas (usuario_id, tarefa_id, ganho) 
-            VALUES (?, ?, ?)
-        ''', (session['usuario_id'], 0, recompensa))
+        nova_tarefa = {
+            "id": get_next_id(dados['tarefas_assistidas']),
+            "usuario_id": session['usuario_id'],
+            "tarefa_id": 0,
+            "data_assistida": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "ganho": recompensa
+        }
+        dados['tarefas_assistidas'].append(nova_tarefa)
         
-        conn.execute('''
-            UPDATE usuarios SET saldo_comissao = saldo_comissao + ?, ganhos_total = ganhos_total + ? 
-            WHERE id = ?
-        ''', (recompensa, recompensa, session['usuario_id']))
+        # Atualizar saldo do usuário
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == session['usuario_id']:
+                dados['usuarios'][i]['saldo_comissao'] += recompensa
+                break
         
-        conn.commit()
-        conn.close()
+        salvar_dados(dados)
         
         return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': URL_FIXO})
     
@@ -369,13 +398,21 @@ def depositar():
                 file.save(filepath)
                 comprovante_path = filepath
         
-        conn = get_db()
-        conn.execute('''
-            INSERT INTO pedidos_deposito (usuario_id, valor, status, comprovante, metodo_pagamento, numero_pagamento, nome_titular)
-            VALUES (?, ?, 'pendente', ?, 'mpesa', ?, ?)
-        ''', (session['usuario_id'], valor, comprovante_path, numero_pagamento, nome_titular))
-        conn.commit()
-        conn.close()
+        dados = carregar_dados()
+        novo_pedido = {
+            "id": get_next_id(dados['pedidos_deposito']),
+            "usuario_id": session['usuario_id'],
+            "valor": valor,
+            "nivel_desejado": 0,
+            "comprovante": comprovante_path,
+            "metodo_pagamento": "mpesa",
+            "numero_pagamento": numero_pagamento,
+            "nome_titular": nome_titular,
+            "status": "pendente",
+            "data_pedido": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        dados['pedidos_deposito'].append(novo_pedido)
+        salvar_dados(dados)
         
         flash(f'✅ Pedido de depósito de {valor} MZN enviado! Aguarde confirmação.', 'sucesso')
         return redirect(url_for('painel'))
@@ -385,8 +422,7 @@ def depositar():
 @app.route('/saque', methods=['GET', 'POST'])
 @login_obrigatorio
 def saque():
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
+    usuario = get_usuario_por_id(session['usuario_id'])
     saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
     pode_sacar = usuario['nivel'] >= 1
     
@@ -412,44 +448,49 @@ def saque():
         taxa = max(valor * 0.05, 10)
         valor_liquido = valor - taxa
         
-        conn.execute('''
-            INSERT INTO pedidos_saque (usuario_id, valor, valor_liquido, taxa, metodo, numero_conta, nome_titular, email_paypal, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
-        ''', (session['usuario_id'], valor, valor_liquido, taxa, metodo, numero_conta, nome_titular, email_paypal))
-        
-        conn.commit()
-        conn.close()
+        dados = carregar_dados()
+        novo_saque = {
+            "id": get_next_id(dados['pedidos_saque']),
+            "usuario_id": session['usuario_id'],
+            "valor": valor,
+            "valor_liquido": valor_liquido,
+            "taxa": taxa,
+            "metodo": metodo,
+            "numero_conta": numero_conta,
+            "nome_titular": nome_titular,
+            "email_paypal": email_paypal,
+            "status": "pendente",
+            "data_pedido": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        dados['pedidos_saque'].append(novo_saque)
+        salvar_dados(dados)
         
         flash(f'✅ Saque de {valor} MZN solicitado! Taxa: {taxa:.2f} MZN', 'sucesso')
         return redirect(url_for('painel'))
     
-    conn.close()
     return render_template('saque.html', saldo_total=saldo_total, saldo_principal=usuario['saldo_principal'],
                          saldo_comissao=usuario['saldo_comissao'], pode_sacar=pode_sacar)
 
 @app.route('/convidar')
 @login_obrigatorio
 def convidar():
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    convidados = conn.execute('''
-        SELECT nome, nivel_nome, data_registro FROM usuarios 
-        WHERE convidado_por = ? ORDER BY data_registro DESC
-    ''', (usuario['codigo_convite'],)).fetchall()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    dados = carregar_dados()
     
-    conn.close()
+    convidados = [u for u in dados['usuarios'] if u['convidado_por'] == usuario['codigo_convite']]
+    
     return render_template('convidar.html', usuario=usuario, convidados=convidados, total_convidados=len(convidados))
 
 @app.route('/vip', methods=['GET', 'POST'])
 @login_obrigatorio
 def vip():
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-    niveis = conn.execute('SELECT * FROM niveis WHERE id > 0 ORDER BY id').fetchall()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    dados = carregar_dados()
+    niveis = [n for n in dados['niveis'] if n['id'] > 0]
     
     if request.method == 'POST':
         novo_nivel_id = int(request.form['nivel_id'])
-        novo_nivel = conn.execute('SELECT * FROM niveis WHERE id = ?', (novo_nivel_id,)).fetchone()
+        novo_nivel = get_nivel_por_id(novo_nivel_id)
         
         if novo_nivel:
             valor_novo_vip = novo_nivel['investimento']
@@ -458,35 +499,31 @@ def vip():
             
             if novo_nivel_id > nivel_atual:
                 if saldo_total >= valor_novo_vip:
-                    if usuario['saldo_principal'] >= valor_novo_vip:
-                        novo_saldo_principal = usuario['saldo_principal'] - valor_novo_vip
-                        conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', 
-                                   (novo_saldo_principal, session['usuario_id']))
-                    else:
-                        restante = valor_novo_vip - usuario['saldo_principal']
-                        conn.execute('UPDATE usuarios SET saldo_principal = 0 WHERE id = ?', (session['usuario_id'],))
-                        conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', 
-                                   (restante, session['usuario_id']))
+                    # Cobrar o valor
+                    novo_saldo_principal = usuario['saldo_principal'] - min(usuario['saldo_principal'], valor_novo_vip)
+                    restante = valor_novo_vip - min(usuario['saldo_principal'], valor_novo_vip)
+                    novo_saldo_comissao = usuario['saldo_comissao'] - restante
                     
+                    # Comissão de 25% para quem convidou
                     if usuario['convidado_por']:
                         comissao = valor_novo_vip * 0.25
-                        conn.execute('''
-                            UPDATE usuarios 
-                            SET saldo_comissao = saldo_comissao + ?, 
-                                ganhos_total = ganhos_total + ? 
-                            WHERE codigo_convite = ?
-                        ''', (comissao, comissao, usuario['convidado_por']))
-                        
-                        flash(f'✅ Seu convidante recebeu {comissao:.2f} MZN de comissão (25%)!', 'info')
+                        convidante = get_usuario_por_codigo(usuario['convidado_por'])
+                        if convidante:
+                            for i, u in enumerate(dados['usuarios']):
+                                if u['id'] == convidante['id']:
+                                    dados['usuarios'][i]['saldo_comissao'] += comissao
+                                    break
                     
-                    nova_validade = (datetime.now() + timedelta(days=novo_nivel['duracao_dias'])).strftime('%Y-%m-%d')
-                    conn.execute('''
-                        UPDATE usuarios 
-                        SET nivel = ?, nivel_nome = ?, validade_inicio = ?, validade_fim = ?
-                        WHERE id = ?
-                    ''', (novo_nivel['id'], novo_nivel['nome'], datetime.now().strftime('%Y-%m-%d'), nova_validade, session['usuario_id']))
+                    # Atualizar usuário
+                    for i, u in enumerate(dados['usuarios']):
+                        if u['id'] == session['usuario_id']:
+                            dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
+                            dados['usuarios'][i]['saldo_comissao'] = novo_saldo_comissao
+                            dados['usuarios'][i]['nivel'] = novo_nivel_id
+                            dados['usuarios'][i]['nivel_nome'] = novo_nivel['nome']
+                            break
                     
-                    conn.commit()
+                    salvar_dados(dados)
                     flash(f'✅ Parabéns! Você fez upgrade para {novo_nivel["nome"]}!', 'sucesso')
                 else:
                     falta = valor_novo_vip - saldo_total
@@ -494,32 +531,35 @@ def vip():
             else:
                 flash(f'❌ Você já possui um nível igual ou superior!', 'erro')
         
-        conn.close()
         return redirect(url_for('vip'))
     
-    conn.close()
     return render_template('vip.html', usuario=usuario, niveis=niveis)
 
-# ==================== SHOP (MARKETPLACE) ====================
+# ==================== SHOP ====================
 
 @app.route('/shop')
 @login_obrigatorio
 def shop():
     try:
-        conn = get_db()
-        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
+        usuario = get_usuario_por_id(session['usuario_id'])
+        dados = carregar_dados()
         
-        # Buscar compras do usuário
-        compras = conn.execute('''
-            SELECT c.*, p.nome as produto_nome, p.imagem
-            FROM compras c
-            JOIN produtos p ON c.produto_id = p.id
-            WHERE c.usuario_id = ?
-            ORDER BY c.data_compra DESC
-        ''', (session['usuario_id'],)).fetchall()
+        produtos = [p for p in dados['produtos'] if p['ativo'] == 1]
         
-        conn.close()
+        compras = []
+        for c in dados['compras']:
+            if c['usuario_id'] == session['usuario_id']:
+                for p in dados['produtos']:
+                    if p['id'] == c['produto_id']:
+                        compras.append({
+                            "id": c['id'],
+                            "produto_nome": p['nome'],
+                            "imagem": p['imagem'],
+                            "valor": c['valor'],
+                            "data_compra": c['data_compra']
+                        })
+                        break
+        
         return render_template('shop.html', usuario=usuario, produtos=produtos, compras=compras)
     
     except Exception as e:
@@ -535,35 +575,45 @@ def comprar_produto():
         produto_id = data.get('produto_id')
         preco = data.get('preco')
         
-        conn = get_db()
-        usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
-        produto = conn.execute('SELECT * FROM produtos WHERE id = ? AND ativo = 1', (produto_id,)).fetchone()
+        dados = carregar_dados()
+        usuario = get_usuario_por_id(session['usuario_id'])
+        
+        produto = None
+        for p in dados['produtos']:
+            if p['id'] == produto_id and p['ativo'] == 1:
+                produto = p
+                break
         
         if not produto:
-            conn.close()
             return jsonify({'sucesso': False, 'erro': 'Produto não encontrado!'})
         
         saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
         
         if saldo_total < preco:
-            conn.close()
-            return jsonify({'sucesso': False, 'erro': f'Saldo insuficiente!'})
+            return jsonify({'sucesso': False, 'erro': 'Saldo insuficiente!'})
         
-        if usuario['saldo_principal'] >= preco:
-            novo_saldo_principal = usuario['saldo_principal'] - preco
-            conn.execute('UPDATE usuarios SET saldo_principal = ? WHERE id = ?', (novo_saldo_principal, session['usuario_id']))
-        else:
-            restante = preco - usuario['saldo_principal']
-            conn.execute('UPDATE usuarios SET saldo_principal = 0 WHERE id = ?', (session['usuario_id'],))
-            conn.execute('UPDATE usuarios SET saldo_comissao = saldo_comissao - ? WHERE id = ?', (restante, session['usuario_id']))
+        # Debita do saldo
+        novo_saldo_principal = usuario['saldo_principal'] - min(usuario['saldo_principal'], preco)
+        restante = preco - min(usuario['saldo_principal'], preco)
+        novo_saldo_comissao = usuario['saldo_comissao'] - restante
         
-        conn.execute('''
-            INSERT INTO compras (usuario_id, produto_id, valor, data_compra)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-        ''', (session['usuario_id'], produto_id, preco))
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == session['usuario_id']:
+                dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
+                dados['usuarios'][i]['saldo_comissao'] = novo_saldo_comissao
+                break
         
-        conn.commit()
-        conn.close()
+        # Registrar compra
+        nova_compra = {
+            "id": get_next_id(dados['compras']),
+            "usuario_id": session['usuario_id'],
+            "produto_id": produto_id,
+            "valor": preco,
+            "data_compra": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        dados['compras'].append(nova_compra)
+        
+        salvar_dados(dados)
         
         return jsonify({'sucesso': True})
     
@@ -571,15 +621,324 @@ def comprar_produto():
         print(f"❌ Erro em /comprar_produto: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
 
-# ==================== ADMIN - GERENCIAR PRODUTOS ====================
+# ==================== ADMIN ====================
+
+@app.route('/admin_painel')
+@admin_obrigatorio
+def admin_painel():
+    dados = carregar_dados()
+    
+    total_usuarios = len(dados['usuarios'])
+    pendentes_deposito = sum(1 for p in dados['pedidos_deposito'] if p['status'] == 'pendente')
+    pendentes_saque = sum(1 for p in dados['pedidos_saque'] if p['status'] == 'pendente')
+    total_saldo_sistema = sum(u['saldo_principal'] + u['saldo_comissao'] for u in dados['usuarios'])
+    
+    ultimos_pedidos = sorted(dados['pedidos_deposito'], key=lambda x: x['data_pedido'], reverse=True)[:10]
+    for pedido in ultimos_pedidos:
+        for u in dados['usuarios']:
+            if u['id'] == pedido['usuario_id']:
+                pedido['nome'] = u['nome']
+                break
+    
+    stats = {
+        'total_usuarios': total_usuarios,
+        'pendentes_deposito': pendentes_deposito,
+        'pendentes_saque': pendentes_saque,
+        'total_saldo_sistema': total_saldo_sistema
+    }
+    
+    return render_template('admin_painel.html', stats=stats, ultimos_pedidos=ultimos_pedidos)
+
+@app.route('/admin_depositos')
+@admin_obrigatorio
+def admin_depositos():
+    dados = carregar_dados()
+    
+    pedidos = []
+    historico = []
+    
+    for p in dados['pedidos_deposito']:
+        for u in dados['usuarios']:
+            if u['id'] == p['usuario_id']:
+                p['nome'] = u['nome']
+                p['email'] = u['email']
+                p['telefone'] = u['telefone']
+                break
+        
+        if p['status'] == 'pendente':
+            pedidos.append(p)
+        else:
+            historico.append(p)
+    
+    return render_template('admin_depositos.html', pedidos=pedidos, historico=historico)
+
+@app.route('/admin_saques')
+@admin_obrigatorio
+def admin_saques():
+    dados = carregar_dados()
+    
+    pendentes = []
+    historico = []
+    
+    for p in dados['pedidos_saque']:
+        for u in dados['usuarios']:
+            if u['id'] == p['usuario_id']:
+                p['usuario_nome'] = u['nome']
+                p['usuario_email'] = u['email']
+                break
+        
+        if p['status'] == 'pendente':
+            pendentes.append(p)
+        else:
+            historico.append(p)
+    
+    return render_template('admin_saques.html', pendentes=pendentes, historico=historico)
+
+@app.route('/admin_usuarios')
+@admin_obrigatorio
+def admin_usuarios():
+    dados = carregar_dados()
+    usuarios = dados['usuarios']
+    niveis = dados['niveis']
+    
+    return render_template('admin_usuarios.html', usuarios=usuarios, niveis=niveis)
+
+@app.route('/admin_tarefas')
+@admin_obrigatorio
+def admin_tarefas():
+    dados = carregar_dados()
+    tarefas = dados['tarefas_multimidia']
+    
+    return render_template('admin_tarefas.html', tarefas=tarefas)
 
 @app.route('/admin_editar_shop')
 @admin_obrigatorio
 def admin_editar_shop():
-    conn = get_db()
-    produtos = conn.execute('SELECT * FROM produtos ORDER BY id DESC').fetchall()
-    conn.close()
+    dados = carregar_dados()
+    produtos = dados['produtos']
+    
     return render_template('admin_editar_shop.html', produtos=produtos)
+
+@app.route('/admin_relatorios')
+@admin_obrigatorio
+def admin_relatorios():
+    dados = carregar_dados()
+    
+    depositos = []
+    for p in dados['pedidos_deposito']:
+        for u in dados['usuarios']:
+            if u['id'] == p['usuario_id']:
+                p['usuario_nome'] = u['nome']
+                p['usuario_email'] = u['email']
+                break
+        depositos.append(p)
+    
+    saques = []
+    for p in dados['pedidos_saque']:
+        for u in dados['usuarios']:
+            if u['id'] == p['usuario_id']:
+                p['usuario_nome'] = u['nome']
+                p['usuario_email'] = u['email']
+                break
+        saques.append(p)
+    
+    compras = []
+    for c in dados['compras']:
+        for u in dados['usuarios']:
+            if u['id'] == c['usuario_id']:
+                c['usuario_nome'] = u['nome']
+                c['usuario_email'] = u['email']
+                break
+        for p in dados['produtos']:
+            if p['id'] == c['produto_id']:
+                c['produto_nome'] = p['nome']
+                break
+        compras.append(c)
+    
+    stats = {
+        'total_usuarios': len(dados['usuarios']),
+        'total_depositos': sum(1 for p in dados['pedidos_deposito'] if p['status'] == 'confirmado'),
+        'total_valor_depositos': sum(p['valor'] for p in dados['pedidos_deposito'] if p['status'] == 'confirmado'),
+        'total_saques': sum(1 for p in dados['pedidos_saque'] if p['status'] == 'pago'),
+        'total_valor_saques': sum(p['valor'] for p in dados['pedidos_saque'] if p['status'] == 'pago'),
+        'total_compras': len(dados['compras']),
+        'total_valor_compras': sum(c['valor'] for c in dados['compras']),
+        'saldo_total_sistema': sum(u['saldo_principal'] + u['saldo_comissao'] for u in dados['usuarios'])
+    }
+    
+    return render_template('admin_relatorios.html', depositos=depositos, saques=saques, compras=compras, stats=stats)
+
+@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def confirmar_deposito(pedido_id):
+    dados = carregar_dados()
+    pedido = None
+    for p in dados['pedidos_deposito']:
+        if p['id'] == pedido_id:
+            pedido = p
+            break
+    
+    if request.method == 'POST':
+        for i, p in enumerate(dados['pedidos_deposito']):
+            if p['id'] == pedido_id:
+                dados['pedidos_deposito'][i]['status'] = 'confirmado'
+                dados['pedidos_deposito'][i]['data_confirmacao'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                break
+        
+        # Adicionar saldo ao usuário
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == pedido['usuario_id']:
+                dados['usuarios'][i]['saldo_principal'] += pedido['valor']
+                break
+        
+        salvar_dados(dados)
+        flash(f'✅ Depósito de {pedido["valor"]} MZN confirmado!', 'sucesso')
+        return redirect(url_for('admin_depositos'))
+    
+    # Buscar dados do usuário
+    for u in dados['usuarios']:
+        if u['id'] == pedido['usuario_id']:
+            pedido['nome'] = u['nome']
+            pedido['email'] = u['email']
+            pedido['telefone'] = u['telefone']
+            break
+    
+    return render_template('confirmar_deposito.html', pedido=pedido)
+
+@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def rejeitar_deposito(pedido_id):
+    dados = carregar_dados()
+    pedido = None
+    for p in dados['pedidos_deposito']:
+        if p['id'] == pedido_id:
+            pedido = p
+            break
+    
+    if request.method == 'POST':
+        for i, p in enumerate(dados['pedidos_deposito']):
+            if p['id'] == pedido_id:
+                dados['pedidos_deposito'][i]['status'] = 'rejeitado'
+                break
+        salvar_dados(dados)
+        flash(f'❌ Depósito de {pedido["valor"]} MZN rejeitado!', 'erro')
+        return redirect(url_for('admin_depositos'))
+    
+    return render_template('rejeitar_deposito.html', pedido=pedido)
+
+@app.route('/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def confirmar_saque(saque_id):
+    dados = carregar_dados()
+    saque = None
+    for p in dados['pedidos_saque']:
+        if p['id'] == saque_id:
+            saque = p
+            break
+    
+    if request.method == 'POST':
+        for i, p in enumerate(dados['pedidos_saque']):
+            if p['id'] == saque_id:
+                dados['pedidos_saque'][i]['status'] = 'pago'
+                dados['pedidos_saque'][i]['data_processamento'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                break
+        
+        # Remover saldo do usuário
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == saque['usuario_id']:
+                dados['usuarios'][i]['saldo_comissao'] = max(0, u['saldo_comissao'] - saque['valor'])
+                break
+        
+        salvar_dados(dados)
+        flash(f'✅ Saque de {saque["valor"]} MZN confirmado!', 'sucesso')
+        return redirect(url_for('admin_saques'))
+    
+    # Buscar dados do usuário
+    for u in dados['usuarios']:
+        if u['id'] == saque['usuario_id']:
+            saque['usuario_nome'] = u['nome']
+            saque['usuario_email'] = u['email']
+            break
+    
+    return render_template('confirmar_saque.html', saque=saque)
+
+@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def rejeitar_saque(saque_id):
+    dados = carregar_dados()
+    saque = None
+    for p in dados['pedidos_saque']:
+        if p['id'] == saque_id:
+            saque = p
+            break
+    
+    if request.method == 'POST':
+        for i, p in enumerate(dados['pedidos_saque']):
+            if p['id'] == saque_id:
+                dados['pedidos_saque'][i]['status'] = 'rejeitado'
+                break
+        salvar_dados(dados)
+        flash(f'❌ Saque de {saque["valor"]} MZN rejeitado!', 'erro')
+        return redirect(url_for('admin_saques'))
+    
+    return render_template('rejeitar_saque.html', saque=saque)
+
+@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def ajustar_saldo(usuario_id):
+    dados = carregar_dados()
+    usuario = get_usuario_por_id(usuario_id)
+    niveis = dados['niveis']
+    
+    if request.method == 'POST':
+        tipo_saldo = request.form['tipo_saldo']
+        valor = float(request.form['valor'])
+        operacao = request.form['operacao']
+        nivel_id = int(request.form.get('nivel_id', 0))
+        
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == usuario_id:
+                if operacao == 'adicionar':
+                    dados['usuarios'][i][tipo_saldo] += valor
+                else:
+                    dados['usuarios'][i][tipo_saldo] = max(0, u[tipo_saldo] - valor)
+                
+                if nivel_id > 0:
+                    nivel = get_nivel_por_id(nivel_id)
+                    if nivel:
+                        dados['usuarios'][i]['nivel'] = nivel_id
+                        dados['usuarios'][i]['nivel_nome'] = nivel['nome']
+                break
+        
+        salvar_dados(dados)
+        flash('✅ Saldo ajustado!', 'sucesso')
+        return redirect(url_for('admin_usuarios'))
+    
+    return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
+
+@app.route('/deposito_manual', methods=['POST'])
+@admin_obrigatorio
+def deposito_manual():
+    usuario_id = int(request.form['usuario_id'])
+    tipo_saldo = request.form['tipo_saldo']
+    valor = float(request.form['valor'])
+    nivel_id = int(request.form.get('nivel_id', 0))
+    
+    dados = carregar_dados()
+    
+    for i, u in enumerate(dados['usuarios']):
+        if u['id'] == usuario_id:
+            dados['usuarios'][i][tipo_saldo] += valor
+            if nivel_id > 0:
+                nivel = get_nivel_por_id(nivel_id)
+                if nivel:
+                    dados['usuarios'][i]['nivel'] = nivel_id
+                    dados['usuarios'][i]['nivel_nome'] = nivel['nome']
+            break
+    
+    salvar_dados(dados)
+    flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
+    return redirect(url_for('admin_usuarios'))
 
 @app.route('/adicionar_produto', methods=['POST'])
 @admin_obrigatorio
@@ -602,13 +961,18 @@ def adicionar_produto():
     if not imagem_path:
         imagem_path = request.form.get('imagem_url', 'https://placehold.co/400x400/667eea/white?text=Produto')
     
-    conn = get_db()
-    conn.execute('''
-        INSERT INTO produtos (nome, descricao, preco, imagem, categoria, ativo)
-        VALUES (?, ?, ?, ?, ?, 1)
-    ''', (nome, descricao, preco, imagem_path, categoria))
-    conn.commit()
-    conn.close()
+    dados = carregar_dados()
+    novo_produto = {
+        "id": get_next_id(dados['produtos']),
+        "nome": nome,
+        "descricao": descricao,
+        "preco": preco,
+        "imagem": imagem_path,
+        "categoria": categoria,
+        "ativo": 1
+    }
+    dados['produtos'].append(novo_produto)
+    salvar_dados(dados)
     
     flash('✅ Produto adicionado com sucesso!', 'sucesso')
     return redirect(url_for('admin_editar_shop'))
@@ -631,39 +995,28 @@ def editar_produto(produto_id):
             file.save(filepath)
             imagem_path = f'/{UPLOAD_FOLDER}/{filename}'
     
-    if not imagem_path:
-        imagem_url = request.form.get('imagem_url', '')
-        if imagem_url:
-            imagem_path = imagem_url
+    dados = carregar_dados()
     
-    conn = get_db()
+    for i, p in enumerate(dados['produtos']):
+        if p['id'] == produto_id:
+            dados['produtos'][i]['nome'] = nome
+            dados['produtos'][i]['descricao'] = descricao
+            dados['produtos'][i]['preco'] = preco
+            dados['produtos'][i]['categoria'] = categoria
+            if imagem_path:
+                dados['produtos'][i]['imagem'] = imagem_path
+            break
     
-    if imagem_path:
-        conn.execute('''
-            UPDATE produtos 
-            SET nome = ?, descricao = ?, preco = ?, imagem = ?, categoria = ?
-            WHERE id = ?
-        ''', (nome, descricao, preco, imagem_path, categoria, produto_id))
-    else:
-        conn.execute('''
-            UPDATE produtos 
-            SET nome = ?, descricao = ?, preco = ?, categoria = ?
-            WHERE id = ?
-        ''', (nome, descricao, preco, categoria, produto_id))
-    
-    conn.commit()
-    conn.close()
-    
+    salvar_dados(dados)
     flash('✅ Produto atualizado com sucesso!', 'sucesso')
     return redirect(url_for('admin_editar_shop'))
 
 @app.route('/remover_produto/<int:produto_id>')
 @admin_obrigatorio
 def remover_produto(produto_id):
-    conn = get_db()
-    conn.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
-    conn.commit()
-    conn.close()
+    dados = carregar_dados()
+    dados['produtos'] = [p for p in dados['produtos'] if p['id'] != produto_id]
+    salvar_dados(dados)
     
     flash('❌ Produto removido!', 'erro')
     return redirect(url_for('admin_editar_shop'))
@@ -671,357 +1024,15 @@ def remover_produto(produto_id):
 @app.route('/alternar_produto/<int:produto_id>')
 @admin_obrigatorio
 def alternar_produto(produto_id):
-    conn = get_db()
-    produto = conn.execute('SELECT ativo FROM produtos WHERE id = ?', (produto_id,)).fetchone()
+    dados = carregar_dados()
+    for i, p in enumerate(dados['produtos']):
+        if p['id'] == produto_id:
+            dados['produtos'][i]['ativo'] = 0 if p['ativo'] == 1 else 1
+            break
+    salvar_dados(dados)
     
-    if produto:
-        novo_status = 0 if produto['ativo'] == 1 else 1
-        conn.execute('UPDATE produtos SET ativo = ? WHERE id = ?', (novo_status, produto_id))
-        flash(f'✅ Produto {"ativado" if novo_status == 1 else "desativado"}!', 'sucesso')
-    
-    conn.commit()
-    conn.close()
+    flash('✅ Status do produto alterado!', 'sucesso')
     return redirect(url_for('admin_editar_shop'))
-
-# ==================== PAINEL ADMIN ====================
-
-@app.route('/admin_painel')
-@admin_obrigatorio
-def admin_painel():
-    conn = get_db()
-    
-    total_usuarios = conn.execute('SELECT COUNT(*) as total FROM usuarios').fetchone()['total']
-    pendentes_deposito = conn.execute('SELECT COUNT(*) as total FROM pedidos_deposito WHERE status = "pendente"').fetchone()['total']
-    pendentes_saque = conn.execute('SELECT COUNT(*) as total FROM pedidos_saque WHERE status = "pendente"').fetchone()['total']
-    total_saldo_sistema = conn.execute('SELECT COALESCE(SUM(saldo_principal + saldo_comissao), 0) as total FROM usuarios').fetchone()['total']
-    
-    ultimos_pedidos = conn.execute('''
-        SELECT p.*, u.nome 
-        FROM pedidos_deposito p
-        JOIN usuarios u ON p.usuario_id = u.id
-        ORDER BY p.data_pedido DESC
-        LIMIT 10
-    ''').fetchall()
-    
-    stats = {
-        'total_usuarios': total_usuarios,
-        'pendentes_deposito': pendentes_deposito,
-        'pendentes_saque': pendentes_saque,
-        'total_saldo_sistema': total_saldo_sistema
-    }
-    
-    conn.close()
-    return render_template('admin_painel.html', stats=stats, ultimos_pedidos=ultimos_pedidos)
-
-@app.route('/admin/stats')
-@admin_obrigatorio
-def admin_stats():
-    conn = get_db()
-    data = {
-        'total_usuarios': conn.execute('SELECT COUNT(*) as total FROM usuarios').fetchone()['total'],
-        'pendentes_deposito': conn.execute('SELECT COUNT(*) as total FROM pedidos_deposito WHERE status = "pendente"').fetchone()['total'],
-        'pendentes_saque': conn.execute('SELECT COUNT(*) as total FROM pedidos_saque WHERE status = "pendente"').fetchone()['total'],
-        'total_saldo_sistema': conn.execute('SELECT COALESCE(SUM(saldo_principal + saldo_comissao), 0) as total FROM usuarios').fetchone()['total']
-    }
-    conn.close()
-    return jsonify(data)
-
-# ==================== ADMIN - RELATÓRIOS ====================
-@app.route('/admin_relatorios')
-@admin_obrigatorio
-def admin_relatorios():
-    conn = get_db()
-    
-    # Buscar todos os depósitos
-    depositos = conn.execute('''
-        SELECT p.*, u.nome as usuario_nome, u.email as usuario_email
-        FROM pedidos_deposito p
-        JOIN usuarios u ON p.usuario_id = u.id
-        ORDER BY p.data_pedido DESC
-        LIMIT 200
-    ''').fetchall()
-    
-    # Buscar todos os saques
-    saques = conn.execute('''
-        SELECT p.*, u.nome as usuario_nome, u.email as usuario_email
-        FROM pedidos_saque p
-        JOIN usuarios u ON p.usuario_id = u.id
-        ORDER BY p.data_pedido DESC
-        LIMIT 200
-    ''').fetchall()
-    
-    # Buscar todas as compras
-    compras = conn.execute('''
-        SELECT c.*, u.nome as usuario_nome, u.email as usuario_email, p.nome as produto_nome
-        FROM compras c
-        JOIN usuarios u ON c.usuario_id = u.id
-        JOIN produtos p ON c.produto_id = p.id
-        ORDER BY c.data_compra DESC
-        LIMIT 200
-    ''').fetchall()
-    
-    # Estatísticas
-    stats = conn.execute('''
-        SELECT 
-            (SELECT COUNT(*) FROM usuarios) as total_usuarios,
-            (SELECT COUNT(*) FROM pedidos_deposito WHERE status = 'confirmado') as total_depositos,
-            (SELECT COALESCE(SUM(valor), 0) FROM pedidos_deposito WHERE status = 'confirmado') as total_valor_depositos,
-            (SELECT COUNT(*) FROM pedidos_saque WHERE status = 'pago') as total_saques,
-            (SELECT COALESCE(SUM(valor), 0) FROM pedidos_saque WHERE status = 'pago') as total_valor_saques,
-            (SELECT COUNT(*) FROM compras) as total_compras,
-            (SELECT COALESCE(SUM(valor), 0) FROM compras) as total_valor_compras,
-            (SELECT COALESCE(SUM(saldo_principal + saldo_comissao), 0) FROM usuarios) as saldo_total_sistema
-    ''').fetchone()
-    
-    conn.close()
-    
-    return render_template('admin_relatorios.html', 
-                         depositos=depositos, 
-                         saques=saques, 
-                         compras=compras,
-                         stats=stats)
-
-@app.route('/admin_depositos')
-@admin_obrigatorio
-def admin_depositos():
-    conn = get_db()
-    pedidos = conn.execute('''
-        SELECT p.*, u.nome, u.email, u.telefone
-        FROM pedidos_deposito p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE p.status = 'pendente'
-        ORDER BY p.data_pedido DESC
-    ''').fetchall()
-    
-    historico = conn.execute('''
-        SELECT p.*, u.nome
-        FROM pedidos_deposito p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE p.status != 'pendente'
-        ORDER BY p.data_pedido DESC
-        LIMIT 50
-    ''').fetchall()
-    
-    conn.close()
-    return render_template('admin_depositos.html', pedidos=pedidos, historico=historico)
-
-@app.route('/admin_saques')
-@admin_obrigatorio
-def admin_saques():
-    conn = get_db()
-    pendentes = conn.execute('''
-        SELECT p.*, u.nome as usuario_nome, u.email as usuario_email
-        FROM pedidos_saque p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE p.status = 'pendente'
-        ORDER BY p.data_pedido DESC
-    ''').fetchall()
-    
-    historico = conn.execute('''
-        SELECT p.*, u.nome as usuario_nome
-        FROM pedidos_saque p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE p.status != 'pendente'
-        ORDER BY p.data_pedido DESC
-        LIMIT 50
-    ''').fetchall()
-    
-    conn.close()
-    return render_template('admin_saques.html', pendentes=pendentes, historico=historico)
-
-@app.route('/admin_usuarios')
-@admin_obrigatorio
-def admin_usuarios():
-    conn = get_db()
-    usuarios = conn.execute('SELECT * FROM usuarios ORDER BY id').fetchall()
-    niveis = conn.execute('SELECT * FROM niveis').fetchall()
-    conn.close()
-    return render_template('admin_usuarios.html', usuarios=usuarios, niveis=niveis)
-
-@app.route('/admin_tarefas')
-@admin_obrigatorio
-def admin_tarefas():
-    conn = get_db()
-    tarefas = conn.execute('SELECT * FROM tarefas_multimidia ORDER BY id DESC').fetchall()
-    conn.close()
-    return render_template('admin_tarefas.html', tarefas=tarefas)
-
-# ==================== ADMIN - CONFIGURAR LINK RÁPIDO ====================
-
-@app.route('/configurar_link_rapido', methods=['POST'])
-@admin_obrigatorio
-def configurar_link_rapido():
-    nivel_id = int(request.form['nivel_id'])
-    url = request.form['url']
-    recompensa = float(request.form['recompensa'])
-    
-    conn = get_db()
-    
-    # Verificar se já existe link para este nível
-    existe = conn.execute('SELECT id FROM tarefas_multimidia WHERE nivel_requerido = ? AND tipo = "link"', (nivel_id,)).fetchone()
-    
-    if existe:
-        # Atualizar link existente
-        conn.execute('''
-            UPDATE tarefas_multimidia 
-            SET url = ?, recompensa = ?, titulo = ?, descricao = ?
-            WHERE nivel_requerido = ? AND tipo = "link"
-        ''', (url, recompensa, f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', nivel_id))
-        flash(f'✅ Link do VIP {nivel_id} atualizado!', 'sucesso')
-    else:
-        # Criar novo link
-        conn.execute('''
-            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, nivel_requerido, ativo)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', 'link', url, recompensa, nivel_id, 1))
-        flash(f'✅ Link do VIP {nivel_id} adicionado!', 'sucesso')
-    
-    conn.commit()
-    conn.close()
-    
-    return redirect(url_for('admin_tarefas'))
-
-# ==================== ADMIN - EDITAR TAREFA ====================
-
-@app.route('/editar_tarefa/<int:tarefa_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def editar_tarefa(tarefa_id):
-    conn = get_db()
-    
-    if request.method == 'POST':
-        titulo = request.form['titulo']
-        descricao = request.form['descricao']
-        url = request.form['url']
-        recompensa = float(request.form['recompensa'])
-        nivel_requerido = int(request.form['nivel_requerido'])
-        
-        conn.execute('''
-            UPDATE tarefas_multimidia 
-            SET titulo = ?, descricao = ?, url = ?, recompensa = ?, nivel_requerido = ?
-            WHERE id = ?
-        ''', (titulo, descricao, url, recompensa, nivel_requerido, tarefa_id))
-        conn.commit()
-        conn.close()
-        
-        flash('✅ Tarefa atualizada!', 'sucesso')
-        return redirect(url_for('admin_tarefas'))
-    
-    tarefa = conn.execute('SELECT * FROM tarefas_multimidia WHERE id = ?', (tarefa_id,)).fetchone()
-    niveis = conn.execute('SELECT * FROM niveis WHERE id > 0').fetchall()
-    conn.close()
-    
-    return render_template('editar_tarefa.html', tarefa=tarefa, niveis=niveis)
-
-@app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def confirmar_deposito(pedido_id):
-    conn = get_db()
-    pedido = conn.execute('SELECT p.*, u.nome, u.email, u.telefone FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
-    
-    if request.method == 'POST':
-        conn.execute('UPDATE usuarios SET saldo_principal = saldo_principal + ? WHERE id = ?', (pedido['valor'], pedido['usuario_id']))
-        conn.execute('UPDATE pedidos_deposito SET status = "confirmado", data_confirmacao = CURRENT_TIMESTAMP WHERE id = ?', (pedido_id,))
-        conn.commit()
-        flash(f'✅ Depósito de {pedido["valor"]} MZN confirmado!', 'sucesso')
-        return redirect(url_for('admin_depositos'))
-    
-    return render_template('confirmar_deposito.html', pedido=pedido)
-
-@app.route('/rejeitar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def rejeitar_deposito(pedido_id):
-    conn = get_db()
-    pedido = conn.execute('SELECT p.*, u.nome FROM pedidos_deposito p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (pedido_id,)).fetchone()
-    
-    if request.method == 'POST':
-        conn.execute('UPDATE pedidos_deposito SET status = "rejeitado" WHERE id = ?', (pedido_id,))
-        conn.commit()
-        flash(f'❌ Depósito de {pedido["valor"]} MZN rejeitado!', 'erro')
-        return redirect(url_for('admin_depositos'))
-    
-    return render_template('rejeitar_deposito.html', pedido=pedido)
-
-@app.route('/confirmar_saque/<int:saque_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def confirmar_saque(saque_id):
-    conn = get_db()
-    saque = conn.execute('SELECT p.*, u.nome as usuario_nome, u.email as usuario_email FROM pedidos_saque p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (saque_id,)).fetchone()
-    
-    if request.method == 'POST':
-        conn.execute('UPDATE usuarios SET saldo_comissao = MAX(saldo_comissao - ?, 0) WHERE id = ?', (saque['valor'], saque['usuario_id']))
-        conn.execute('UPDATE pedidos_saque SET status = "pago", data_processamento = CURRENT_TIMESTAMP WHERE id = ?', (saque_id,))
-        conn.commit()
-        flash(f'✅ Saque de {saque["valor"]} MZN confirmado!', 'sucesso')
-        return redirect(url_for('admin_saques'))
-    
-    return render_template('confirmar_saque.html', saque=saque)
-
-@app.route('/rejeitar_saque/<int:saque_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def rejeitar_saque(saque_id):
-    conn = get_db()
-    saque = conn.execute('SELECT p.*, u.nome as usuario_nome FROM pedidos_saque p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = ?', (saque_id,)).fetchone()
-    
-    if request.method == 'POST':
-        conn.execute('UPDATE pedidos_saque SET status = "rejeitado", data_processamento = CURRENT_TIMESTAMP WHERE id = ?', (saque_id,))
-        conn.commit()
-        flash(f'❌ Saque de {saque["valor"]} MZN rejeitado!', 'erro')
-        return redirect(url_for('admin_saques'))
-    
-    return render_template('rejeitar_saque.html', saque=saque)
-
-@app.route('/ajustar_saldo/<int:usuario_id>', methods=['GET', 'POST'])
-@admin_obrigatorio
-def ajustar_saldo(usuario_id):
-    conn = get_db()
-    usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
-    niveis = conn.execute('SELECT * FROM niveis').fetchall()
-    
-    if request.method == 'POST':
-        tipo_saldo = request.form['tipo_saldo']
-        valor = float(request.form['valor'])
-        operacao = request.form['operacao']
-        nivel_id = int(request.form.get('nivel_id', 0))
-        
-        if operacao == 'adicionar':
-            conn.execute(f'UPDATE usuarios SET {tipo_saldo} = {tipo_saldo} + ? WHERE id = ?', (valor, usuario_id))
-        else:
-            conn.execute(f'UPDATE usuarios SET {tipo_saldo} = MAX({tipo_saldo} - ?, 0) WHERE id = ?', (valor, usuario_id))
-        
-        if nivel_id > 0:
-            nivel = conn.execute('SELECT * FROM niveis WHERE id = ?', (nivel_id,)).fetchone()
-            if nivel:
-                nova_validade = (datetime.now() + timedelta(days=nivel['duracao_dias'])).strftime('%Y-%m-%d')
-                conn.execute('UPDATE usuarios SET nivel = ?, nivel_nome = ?, validade_inicio = ?, validade_fim = ? WHERE id = ?',
-                            (nivel['id'], nivel['nome'], datetime.now().strftime('%Y-%m-%d'), nova_validade, usuario_id))
-        
-        conn.commit()
-        flash('✅ Saldo ajustado!', 'sucesso')
-        return redirect(url_for('admin_usuarios'))
-    
-    return render_template('ajustar_saldo.html', usuario=usuario, niveis=niveis)
-
-@app.route('/deposito_manual', methods=['POST'])
-@admin_obrigatorio
-def deposito_manual():
-    usuario_id = int(request.form['usuario_id'])
-    tipo_saldo = request.form['tipo_saldo']
-    valor = float(request.form['valor'])
-    nivel_id = int(request.form.get('nivel_id', 0))
-    
-    conn = get_db()
-    conn.execute(f'UPDATE usuarios SET {tipo_saldo} = {tipo_saldo} + ? WHERE id = ?', (valor, usuario_id))
-    
-    if nivel_id > 0:
-        nivel = conn.execute('SELECT * FROM niveis WHERE id = ?', (nivel_id,)).fetchone()
-        if nivel:
-            nova_validade = (datetime.now() + timedelta(days=nivel['duracao_dias'])).strftime('%Y-%m-%d')
-            conn.execute('UPDATE usuarios SET nivel = ?, nivel_nome = ?, validade_inicio = ?, validade_fim = ? WHERE id = ?',
-                        (nivel['id'], nivel['nome'], datetime.now().strftime('%Y-%m-%d'), nova_validade, usuario_id))
-    
-    conn.commit()
-    flash(f'✅ Adicionado {valor} MZN ao usuário!', 'sucesso')
-    return redirect(url_for('admin_usuarios'))
 
 @app.route('/adicionar_tarefa_multimidia', methods=['POST'])
 @admin_obrigatorio
@@ -1034,13 +1045,20 @@ def adicionar_tarefa_multimidia():
     duracao = int(request.form.get('duracao', 30))
     nivel_requerido = int(request.form.get('nivel_requerido', 1))
     
-    conn = get_db()
-    conn.execute('''
-        INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, duracao_segundos, nivel_requerido)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (titulo, descricao, tipo, url, recompensa, duracao, nivel_requerido))
-    conn.commit()
-    conn.close()
+    dados = carregar_dados()
+    nova_tarefa = {
+        "id": get_next_id(dados['tarefas_multimidia']),
+        "titulo": titulo,
+        "descricao": descricao,
+        "tipo": tipo,
+        "url": url,
+        "recompensa": recompensa,
+        "duracao_segundos": duracao,
+        "nivel_requerido": nivel_requerido,
+        "ativo": 1
+    }
+    dados['tarefas_multimidia'].append(nova_tarefa)
+    salvar_dados(dados)
     
     flash('✅ Tarefa adicionada!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
@@ -1048,11 +1066,46 @@ def adicionar_tarefa_multimidia():
 @app.route('/remover_tarefa_multimidia/<int:tarefa_id>')
 @admin_obrigatorio
 def remover_tarefa_multimidia(tarefa_id):
-    conn = get_db()
-    conn.execute('DELETE FROM tarefas_multimidia WHERE id = ?', (tarefa_id,))
-    conn.commit()
-    conn.close()
+    dados = carregar_dados()
+    dados['tarefas_multimidia'] = [t for t in dados['tarefas_multimidia'] if t['id'] != tarefa_id]
+    salvar_dados(dados)
+    
     flash('❌ Tarefa removida!', 'erro')
+    return redirect(url_for('admin_tarefas'))
+
+@app.route('/configurar_link_rapido', methods=['POST'])
+@admin_obrigatorio
+def configurar_link_rapido():
+    nivel_id = int(request.form['nivel_id'])
+    url = request.form['url']
+    recompensa = float(request.form['recompensa'])
+    
+    dados = carregar_dados()
+    
+    existe = False
+    for i, t in enumerate(dados['tarefas_multimidia']):
+        if t['nivel_requerido'] == nivel_id and t['tipo'] == 'link':
+            dados['tarefas_multimidia'][i]['url'] = url
+            dados['tarefas_multimidia'][i]['recompensa'] = recompensa
+            existe = True
+            break
+    
+    if not existe:
+        nova_tarefa = {
+            "id": get_next_id(dados['tarefas_multimidia']),
+            "titulo": f'Anúncio VIP {nivel_id}',
+            "descricao": f'Assista ao anúncio e ganhe {recompensa} MZN',
+            "tipo": 'link',
+            "url": url,
+            "recompensa": recompensa,
+            "duracao_segundos": 30,
+            "nivel_requerido": nivel_id,
+            "ativo": 1
+        }
+        dados['tarefas_multimidia'].append(nova_tarefa)
+    
+    salvar_dados(dados)
+    flash(f'✅ Link do VIP {nivel_id} configurado!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
 # ==================== INICIALIZAÇÃO ====================
@@ -1062,7 +1115,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print("🚀 SERVIDOR INICIADO COM SUCESSO!")
     print("=" * 60)
-    print("📍 Acesse: https://mozads.onrender.com")
+    print("📍 Acesse: http://localhost:5000")
     print("👑 Admin: admin@admin.com / senha: admin123")
     print("=" * 60)
     

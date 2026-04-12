@@ -509,8 +509,18 @@ def shop():
         conn = get_db()
         usuario = conn.execute('SELECT * FROM usuarios WHERE id = ?', (session['usuario_id'],)).fetchone()
         produtos = conn.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY id').fetchall()
+        
+        # Buscar compras do usuário
+        compras = conn.execute('''
+            SELECT c.*, p.nome as produto_nome, p.imagem
+            FROM compras c
+            JOIN produtos p ON c.produto_id = p.id
+            WHERE c.usuario_id = ?
+            ORDER BY c.data_compra DESC
+        ''', (session['usuario_id'],)).fetchall()
+        
         conn.close()
-        return render_template('shop.html', usuario=usuario, produtos=produtos)
+        return render_template('shop.html', usuario=usuario, produtos=produtos, compras=compras)
     
     except Exception as e:
         print(f"❌ Erro em /shop: {str(e)}")

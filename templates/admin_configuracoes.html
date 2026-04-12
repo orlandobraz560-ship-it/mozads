@@ -25,26 +25,31 @@
             gap: 10px;
         }
         .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
         .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
         input, select { padding: 10px; border-radius: 8px; border: none; margin: 5px; width: 100%; }
-        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        label { display: block; margin-top: 10px; margin-bottom: 5px; color: #aaa; }
         .nivel-item {
             background: #16213e;
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
+        }
+        .nivel-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
+            margin-top: 10px;
+        }
+        .nivel-grid input {
+            margin: 0;
         }
         .flash { padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
         .sucesso { background: #d4edda; color: #155724; }
         .erro { background: #f8d7da; color: #721c24; }
-        h3 { margin-bottom: 15px; }
+        h3 { margin-bottom: 15px; border-left: 4px solid #e94560; padding-left: 12px; }
+        hr { margin: 20px 0; border-color: #1a1a2e; }
     </style>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
     <div class="container">
@@ -59,35 +64,64 @@
             {% endfor %}
         {% endwith %}
 
-        <div class="card">
-            <h3>👑 Níveis VIP</h3>
-            {% for nivel in niveis %}
-            <div class="nivel-item">
-                <div>
-                    <strong>{{ nivel.nome }}</strong><br>
-                    <small>💰 Investimento: {{ nivel.investimento }} MZN</small><br>
-                    <small>📈 Ganho diário: {{ nivel.ganho_diario }} MZN</small>
-                </div>
-                <button class="btn-success" style="width: auto; padding: 8px 15px;" onclick="alert('Editar nível em desenvolvimento')">✏️ Editar</button>
+        <form method="POST">
+            <!-- Configurações Gerais -->
+            <div class="card">
+                <h3>📞 Configurações Gerais</h3>
+                
+                <label>📱 Número WhatsApp (Suporte)</label>
+                <input type="tel" name="whatsapp" value="{{ config.whatsapp }}" placeholder="Ex: 879267774">
+                
+                <label>💬 Link do Grupo WhatsApp</label>
+                <input type="text" name="grupo" value="{{ config.grupo }}" placeholder="https://chat.whatsapp.com/...">
+                
+                <label>🏷️ Nome do Site</label>
+                <input type="text" name="site_nome" value="{{ config.site_nome }}" placeholder="MOZ ADS">
+                
+                <label>💰 Taxa de Saque (%)</label>
+                <input type="number" name="taxa_saque" value="{{ config.taxa_saque }}" step="0.1" placeholder="5">
+                
+                <label>📊 Valor Mínimo para Saque (MZN)</label>
+                <input type="number" name="min_saque" value="{{ config.min_saque }}" step="1" placeholder="100">
             </div>
-            {% endfor %}
-        </div>
 
-        <div class="card">
-            <h3>📞 Contatos de Suporte</h3>
-            <form method="POST">
-                <input type="text" name="whatsapp" placeholder="Número WhatsApp" value="879267774">
-                <input type="text" name="grupo" placeholder="Link do Grupo WhatsApp" value="https://chat.whatsapp.com/DwPuPeBzKAfEXz6efHtIVP">
-                <button type="submit" class="btn-success">💾 Salvar Configurações</button>
-            </form>
-        </div>
+            <!-- Configurações dos Níveis VIP -->
+            <div class="card">
+                <h3>👑 Configurações dos Níveis VIP</h3>
+                
+                {% for nivel in niveis %}
+                    {% if nivel.id > 0 %}
+                    <div class="nivel-item">
+                        <strong>{{ nivel.nome }}</strong>
+                        <div class="nivel-grid">
+                            <div>
+                                <label>💰 Investimento (MZN)</label>
+                                <input type="number" name="investimento_{{ nivel.id }}" value="{{ nivel.investimento }}" step="1">
+                            </div>
+                            <div>
+                                <label>📋 Tarefas/dia</label>
+                                <input type="number" name="tarefas_{{ nivel.id }}" value="{{ nivel.tarefas_por_dia }}" step="1">
+                            </div>
+                            <div>
+                                <label>💵 Recompensa (MZN)</label>
+                                <input type="number" name="recompensa_{{ nivel.id }}" value="{{ nivel.recompensa_por_anuncio }}" step="1">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
 
-        <div class="card">
-            <h3>ℹ️ Informações do Sistema</h3>
-            <p><strong>Versão:</strong> 1.01</p>
-            <p><strong>Desenvolvido por:</strong> MOZ_ADS</p>
-            <p><strong>Suporte:</strong> 879267774</p>
-        </div>
+            <!-- Informações do Sistema -->
+            <div class="card">
+                <h3>ℹ️ Informações do Sistema</h3>
+                <p><strong>Versão:</strong> 1.01</p>
+                <p><strong>Última atualização:</strong> {{ config.ultima_atualizacao if config.ultima_atualizacao else 'Nunca' }}</p>
+                <p><strong>Desenvolvido por:</strong> MOZ ADS</p>
+            </div>
+
+            <button type="submit" class="btn-success" style="width: 100%;">💾 Salvar Configurações</button>
+        </form>
     </div>
 </body>
 </html>

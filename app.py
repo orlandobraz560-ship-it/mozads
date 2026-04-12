@@ -337,7 +337,7 @@ def clicar_tarefa():
         usuario = get_usuario_por_id(session['usuario_id'])
         dados = carregar_dados()
         
-        URL_FIXO = "https://omg10.com/4/10861968"
+        URL_FIXO = "https://omg10.com/4/10751470"
         
         nivel_usuario = get_nivel_por_id(usuario['nivel'])
         
@@ -710,6 +710,76 @@ def admin_tarefas():
     tarefas = dados['tarefas_multimidia']
     
     return render_template('admin_tarefas.html', tarefas=tarefas)
+
+# ==================== ADMIN - CONFIGURAÇÕES ====================
+
+@app.route('/admin_configuracoes', methods=['GET', 'POST'])
+@admin_obrigatorio
+def admin_configuracoes():
+    dados = carregar_dados()
+    niveis = dados['niveis']
+    
+    if request.method == 'POST':
+        # Salvar configurações gerais
+        whatsapp = request.form.get('whatsapp', '')
+        grupo = request.form.get('grupo', '')
+        site_nome = request.form.get('site_nome', 'MOZ ADS')
+        taxa_saque = float(request.form.get('taxa_saque', 5))
+        min_saque = float(request.form.get('min_saque', 100))
+        
+        # Salvar no arquivo de configuração (pode criar uma seção config no JSON)
+        dados['config'] = {
+            'whatsapp': whatsapp,
+            'grupo': grupo,
+            'site_nome': site_nome,
+            'taxa_saque': taxa_saque,
+            'min_saque': min_saque,
+            'ultima_atualizacao': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        # Atualizar níveis se vierem do formulário
+        for nivel in niveis:
+            nivel_id = nivel['id']
+            if nivel_id > 0:  # Pular Estagiário
+                investimento_key = f'investimento_{nivel_id}'
+                tarefas_key = f'tarefas_{nivel_id}'
+                recompensa_key = f'recompensa_{nivel_id}'
+                
+                if investimento_key in request.form:
+                    novo_investimento = float(request.form[investimento_key])
+                    for n in dados['niveis']:
+                        if n['id'] == nivel_id:
+                            n['investimento'] = novo_investimento
+                            break
+                
+                if tarefas_key in request.form:
+                    novas_tarefas = int(request.form[tarefas_key])
+                    for n in dados['niveis']:
+                        if n['id'] == nivel_id:
+                            n['tarefas_por_dia'] = novas_tarefas
+                            break
+                
+                if recompensa_key in request.form:
+                    nova_recompensa = float(request.form[recompensa_key])
+                    for n in dados['niveis']:
+                        if n['id'] == nivel_id:
+                            n['recompensa_por_anuncio'] = nova_recompensa
+                            break
+        
+        salvar_dados(dados)
+        flash('✅ Configurações salvas com sucesso!', 'sucesso')
+        return redirect(url_for('admin_configuracoes'))
+    
+    # Carregar configurações existentes
+    config = dados.get('config', {
+        'whatsapp': '879267774',
+        'grupo': 'https://chat.whatsapp.com/DwPuPeBzKAfEXz6efHtIVP',
+        'site_nome': 'MOZ ADS',
+        'taxa_saque': 5,
+        'min_saque': 100
+    })
+    
+    return render_template('admin_configuracoes.html', niveis=niveis, config=config)
 
 @app.route('/admin_editar_shop')
 @admin_obrigatorio

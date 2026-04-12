@@ -12,7 +12,7 @@
             color: white;
             padding: 20px;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .header {
             background: #16213e;
             padding: 20px;
@@ -21,69 +21,265 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
-        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
-        th { background: #16213e; }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; overflow-x: auto; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        th {
+            background: #16213e;
+            font-weight: bold;
+        }
+        .status-pendente { color: #ff9800; }
+        .status-confirmado { color: #4caf50; }
+        .status-pago { color: #4caf50; }
+        .status-rejeitado { color: #f44336; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: #16213e;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .tab.active {
+            background: #e94560;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        h3 {
+            margin-bottom: 15px;
+        }
     </style>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h2>📊 Relatórios do Sistema</h2>
-            <a href="/admin_painel" class="btn">← Voltar</a>
+            <a href="/admin_painel" class="btn">← Voltar ao Dashboard</a>
         </div>
 
-        <div class="card">
-            <h3>📋 Histórico de Depósitos</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for deposito in depositos %}
-                        <tr>
-                            <td>{{ deposito.id }}</td>
-                            <td>{{ deposito.nome }}</td>
-                            <td>{{ deposito.valor }} MZN</td>
-                            <td>{{ deposito.status }}</td>
-                            <td>{{ deposito.data_pedido[:16] }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" style="text-align: center;">Nenhum depósito encontrado</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- Estatísticas Gerais -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_usuarios or 0 }}</div>
+                <div class="stat-label">Total de Usuários</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_depositos or 0 }}</div>
+                <div class="stat-label">Depósitos Confirmados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "%.0f"|format(stats.total_valor_depositos or 0) }} MZN</div>
+                <div class="stat-label">Valor Total em Depósitos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_saques or 0 }}</div>
+                <div class="stat-label">Saques Pagos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "%.0f"|format(stats.total_valor_saques or 0) }} MZN</div>
+                <div class="stat-label">Valor Total em Saques</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total_compras or 0 }}</div>
+                <div class="stat-label">Compras Realizadas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "%.0f"|format(stats.total_valor_compras or 0) }} MZN</div>
+                <div class="stat-label">Valor Total em Compras</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ "%.0f"|format(stats.saldo_total_sistema or 0) }} MZN</div>
+                <div class="stat-label">Saldo Total no Sistema</div>
             </div>
         </div>
 
-        <div class="card">
-            <h3>💸 Histórico de Saques</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Usuário</th><th>Valor</th><th>Status</th><th>Data</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for saque in saques %}
-                        <tr>
-                            <td>{{ saque.id }}</td>
-                            <td>{{ saque.usuario_nome }}</td>
-                            <td>{{ saque.valor }} MZN</td>
-                            <td>{{ saque.status }}</td>
-                            <td>{{ saque.data_pedido[:16] }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="5" style="text-align: center;">Nenhum saque encontrado</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="mostrarTab('depositos')">💰 Depósitos</div>
+            <div class="tab" onclick="mostrarTab('saques')">💸 Saques</div>
+            <div class="tab" onclick="mostrarTab('compras')">🛒 Compras</div>
+        </div>
+
+        <!-- TAB 1: Depósitos -->
+        <div id="tab-depositos" class="tab-content active">
+            <div class="card">
+                <h3>💰 Histórico de Depósitos</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for deposito in depositos %}
+                            <tr>
+                                <td>{{ deposito.id }}</td>
+                                <td>{{ deposito.usuario_nome }}</td>
+                                <td>{{ deposito.usuario_email }}</small></td>
+                                <td><strong>{{ deposito.valor }} MZN</strong></td>
+                                <td>
+                                    <span class="status-{{ deposito.status }}">
+                                        {% if deposito.status == 'pendente' %}⏳ Pendente
+                                        {% elif deposito.status == 'confirmado' %}✅ Confirmado
+                                        {% else %}❌ Rejeitado{% endif %}
+                                    </span>
+                                </td>
+                                <td><small>{{ deposito.data_pedido[:16] }}</small></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" style="text-align: center;">Nenhum depósito encontrado</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Saques -->
+        <div id="tab-saques" class="tab-content">
+            <div class="card">
+                <h3>💸 Histórico de Saques</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Valor</th>
+                                <th>Taxa</th>
+                                <th>Líquido</th>
+                                <th>Método</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for saque in saques %}
+                            <tr>
+                                <td>{{ saque.id }}</td>
+                                <td>{{ saque.usuario_nome }}</small></td>
+                                <td>{{ saque.usuario_email }}</small></td>
+                                <td><strong>{{ saque.valor }} MZN</strong></td>
+                                <td>{{ saque.taxa }} MZN</small></td>
+                                <td>{{ "%.2f"|format(saque.valor_liquido) }} MZN</small></td>
+                                <td>{{ saque.metodo }}</small></td>
+                                <td>
+                                    <span class="status-{{ saque.status }}">
+                                        {% if saque.status == 'pendente' %}⏳ Pendente
+                                        {% elif saque.status == 'pago' %}✅ Pago
+                                        {% else %}❌ Rejeitado{% endif %}
+                                    </span>
+                                </td>
+                                <td><small>{{ saque.data_pedido[:16] }}</small></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="9" style="text-align: center;">Nenhum saque encontrado</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Compras -->
+        <div id="tab-compras" class="tab-content">
+            <div class="card">
+                <h3>🛒 Histórico de Compras</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Email</th>
+                                <th>Produto</th>
+                                <th>Valor</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for compra in compras %}
+                            <tr>
+                                <td>{{ compra.id }}</td>
+                                <td>{{ compra.usuario_nome }}</small></td>
+                                <td>{{ compra.usuario_email }}</small></td>
+                                <td>{{ compra.produto_nome }}</small></td>
+                                <td><strong>{{ compra.valor }} MZN</strong></td>
+                                <td><small>{{ compra.data_compra[:16] }}</small></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" style="text-align: center;">Nenhuma compra encontrada</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+        function mostrarTab(tabId) {
+            // Esconder todos os tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // Mostrar o tab selecionado
+            document.getElementById('tab-' + tabId).classList.add('active');
+            // Atualizar botões ativos
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+        }
+    </script>
 </body>
 </html>

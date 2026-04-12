@@ -13,6 +13,54 @@
         .saldo-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .saldo-valor { font-size: 28px; font-weight: bold; color: #2e7d32; }
         
+        /* Barra de Pesquisa */
+        .search-bar {
+            background: white;
+            border-radius: 30px;
+            padding: 8px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .search-bar input {
+            flex: 1;
+            border: none;
+            padding: 10px;
+            font-size: 16px;
+            outline: none;
+            background: transparent;
+        }
+        .search-bar button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
         .categorias { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 5px; }
         .categoria { background: white; padding: 8px 20px; border-radius: 20px; white-space: nowrap; cursor: pointer; transition: all 0.3s; }
         .categoria.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
@@ -23,10 +71,27 @@
         .produto-titulo { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
         .produto-descricao { font-size: 12px; color: #666; margin-bottom: 8px; }
         .produto-preco { font-size: 18px; font-weight: bold; color: #2e7d32; margin-bottom: 8px; }
-        .produto-preco span { font-size: 12px; color: #666; }
         .btn-comprar { background: linear-gradient(135deg, #2196f3 0%, #21d4fd 100%); color: white; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; width: 100%; }
         .btn-comprar:active { transform: scale(0.98); }
         .btn-comprar:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Histórico de Compras */
+        .compra-item {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .compra-imagem { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; }
+        .compra-info { flex: 1; }
+        .compra-nome { font-weight: bold; font-size: 14px; }
+        .compra-data { font-size: 10px; color: #999; }
+        .compra-preco { font-weight: bold; color: #2e7d32; }
+        .sem-compras { text-align: center; padding: 40px; color: #999; }
         
         .bottom-menu { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 16px; max-width: 500px; margin: 0 auto; border-radius: 20px 20px 0 0; }
         .bottom-item { text-align: center; text-decoration: none; color: #999; font-size: 12px; padding: 8px; border-radius: 10px; }
@@ -44,7 +109,6 @@
         .modal-footer { padding: 20px; display: flex; gap: 10px; }
         .btn-confirmar { background: #4caf50; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; flex: 1; font-weight: bold; }
         .btn-cancelar { background: #f44336; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; flex: 1; font-weight: bold; }
-        .produto-detalhe-imagem { width: 100%; border-radius: 12px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -66,8 +130,20 @@
             <div style="font-size: 12px; color: #666;">Principal: {{ "%.2f"|format(usuario.saldo_principal) }} MZN | Comissão: {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</div>
         </div>
 
-        <!-- Categorias -->
-        <div class="categorias">
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="mostrarTab('produtos')">🛍️ Produtos</div>
+            <div class="tab" onclick="mostrarTab('historico')">📜 Meus Pedidos</div>
+        </div>
+
+        <!-- Barra de Pesquisa -->
+        <div class="search-bar">
+            <input type="text" id="pesquisaInput" placeholder="🔍 Buscar produtos..." onkeyup="buscarProdutos()">
+            <button onclick="buscarProdutos()">Buscar</button>
+        </div>
+
+        <!-- Categorias (visível apenas na aba produtos) -->
+        <div id="categorias" class="categorias">
             <div class="categoria active" data-cat="all">📱 Todos</div>
             <div class="categoria" data-cat="eletronicos">📱 Eletrônicos</div>
             <div class="categoria" data-cat="moda">👕 Moda</div>
@@ -78,16 +154,37 @@
         <!-- Lista de Produtos -->
         <div id="produtos-list">
             {% for produto in produtos %}
-            <div class="produto-card" data-cat="{{ produto.categoria }}" data-preco="{{ produto.preco }}" data-id="{{ produto.id }}">
+            <div class="produto-card" data-cat="{{ produto.categoria }}" data-nome="{{ produto.nome|lower }}" data-preco="{{ produto.preco }}" data-id="{{ produto.id }}">
                 <img src="{{ produto.imagem }}" class="produto-imagem" alt="{{ produto.nome }}" onerror="this.src='https://placehold.co/100x100/667eea/white?text={{ produto.nome[0] }}'">
                 <div class="produto-info">
                     <div class="produto-titulo">{{ produto.nome }}</div>
                     <div class="produto-descricao">{{ produto.descricao[:50] }}{% if produto.descricao|length > 50 %}...{% endif %}</div>
-                    <div class="produto-preco">{{ "%.0f"|format(produto.preco) }} MZN <span>ou {{ (produto.preco / 30)|round(0)|int }} tarefas</span></div>
+                    <div class="produto-preco">{{ "%.0f"|format(produto.preco) }} MZN</div>
                     <button class="btn-comprar" onclick="comprarProduto({{ produto.id }}, '{{ produto.nome }}', {{ produto.preco }})">🛒 Comprar</button>
                 </div>
             </div>
             {% endfor %}
+        </div>
+
+        <!-- Histórico de Compras -->
+        <div id="historico-list" style="display: none;">
+            {% if compras %}
+                {% for compra in compras %}
+                <div class="compra-item">
+                    <img src="{{ compra.imagem }}" class="compra-imagem" onerror="this.src='https://placehold.co/50x50/667eea/white?text=Produto'">
+                    <div class="compra-info">
+                        <div class="compra-nome">{{ compra.produto_nome }}</div>
+                        <div class="compra-data">{{ compra.data_compra[:16] }}</div>
+                    </div>
+                    <div class="compra-preco">{{ "%.0f"|format(compra.valor) }} MZN</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="sem-compras">
+                    🛍️ Você ainda não fez nenhuma compra<br>
+                    <small>Volte à aba Produtos e adquira algo!</small>
+                </div>
+            {% endif %}
         </div>
 
         <div class="bottom-menu">
@@ -103,6 +200,52 @@
 
     <script>
         let saldoTotal = {{ usuario.saldo_principal + usuario.saldo_comissao }};
+
+        function mostrarTab(tab) {
+            if (tab === 'produtos') {
+                document.getElementById('produtos-list').style.display = 'block';
+                document.getElementById('historico-list').style.display = 'none';
+                document.getElementById('categorias').style.display = 'flex';
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+            } else {
+                document.getElementById('produtos-list').style.display = 'none';
+                document.getElementById('historico-list').style.display = 'block';
+                document.getElementById('categorias').style.display = 'none';
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+            }
+        }
+
+        function buscarProdutos() {
+            const termo = document.getElementById('pesquisaInput').value.toLowerCase();
+            const produtos = document.querySelectorAll('.produto-card');
+            
+            produtos.forEach(produto => {
+                const nome = produto.dataset.nome;
+                if (nome.includes(termo)) {
+                    produto.style.display = 'flex';
+                } else {
+                    produto.style.display = 'none';
+                }
+            });
+        }
+
+        // Filtro por categoria
+        document.querySelectorAll('.categoria').forEach(cat => {
+            cat.addEventListener('click', function() {
+                document.querySelectorAll('.categoria').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const categoria = this.dataset.cat;
+                document.querySelectorAll('.produto-card').forEach(produto => {
+                    if (categoria === 'all' || produto.dataset.cat === categoria) {
+                        produto.style.display = 'flex';
+                    } else {
+                        produto.style.display = 'none';
+                    }
+                });
+            });
+        });
 
         function comprarProduto(produtoId, produtoNome, produtoPreco) {
             if (saldoTotal < produtoPreco) {
@@ -169,22 +312,6 @@
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
-
-        // Filtro por categoria
-        document.querySelectorAll('.categoria').forEach(cat => {
-            cat.addEventListener('click', function() {
-                document.querySelectorAll('.categoria').forEach(c => c.classList.remove('active'));
-                this.classList.add('active');
-                const categoria = this.dataset.cat;
-                document.querySelectorAll('.produto-card').forEach(produto => {
-                    if (categoria === 'all' || produto.dataset.cat === categoria) {
-                        produto.style.display = 'flex';
-                    } else {
-                        produto.style.display = 'none';
-                    }
-                });
-            });
-        });
 
         function atualizarSaldo() {
             fetch('/api/saldo')

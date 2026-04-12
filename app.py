@@ -781,6 +781,72 @@ def admin_tarefas():
     conn.close()
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
+# ==================== ADMIN - CONFIGURAR LINK RÁPIDO ====================
+
+@app.route('/configurar_link_rapido', methods=['POST'])
+@admin_obrigatorio
+def configurar_link_rapido():
+    nivel_id = int(request.form['nivel_id'])
+    url = request.form['url']
+    recompensa = float(request.form['recompensa'])
+    
+    conn = get_db()
+    
+    # Verificar se já existe link para este nível
+    existe = conn.execute('SELECT id FROM tarefas_multimidia WHERE nivel_requerido = ? AND tipo = "link"', (nivel_id,)).fetchone()
+    
+    if existe:
+        # Atualizar link existente
+        conn.execute('''
+            UPDATE tarefas_multimidia 
+            SET url = ?, recompensa = ?, titulo = ?, descricao = ?
+            WHERE nivel_requerido = ? AND tipo = "link"
+        ''', (url, recompensa, f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', nivel_id))
+        flash(f'✅ Link do VIP {nivel_id} atualizado!', 'sucesso')
+    else:
+        # Criar novo link
+        conn.execute('''
+            INSERT INTO tarefas_multimidia (titulo, descricao, tipo, url, recompensa, nivel_requerido, ativo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (f'Anúncio VIP {nivel_id}', f'Assista ao anúncio e ganhe {recompensa} MZN', 'link', url, recompensa, nivel_id, 1))
+        flash(f'✅ Link do VIP {nivel_id} adicionado!', 'sucesso')
+    
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('admin_tarefas'))
+
+# ==================== ADMIN - EDITAR TAREFA ====================
+
+@app.route('/editar_tarefa/<int:tarefa_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def editar_tarefa(tarefa_id):
+    conn = get_db()
+    
+    if request.method == 'POST':
+        titulo = request.form['titulo']
+        descricao = request.form['descricao']
+        url = request.form['url']
+        recompensa = float(request.form['recompensa'])
+        nivel_requerido = int(request.form['nivel_requerido'])
+        
+        conn.execute('''
+            UPDATE tarefas_multimidia 
+            SET titulo = ?, descricao = ?, url = ?, recompensa = ?, nivel_requerido = ?
+            WHERE id = ?
+        ''', (titulo, descricao, url, recompensa, nivel_requerido, tarefa_id))
+        conn.commit()
+        conn.close()
+        
+        flash('✅ Tarefa atualizada!', 'sucesso')
+        return redirect(url_for('admin_tarefas'))
+    
+    tarefa = conn.execute('SELECT * FROM tarefas_multimidia WHERE id = ?', (tarefa_id,)).fetchone()
+    niveis = conn.execute('SELECT * FROM niveis WHERE id > 0').fetchall()
+    conn.close()
+    
+    return render_template('editar_tarefa.html', tarefa=tarefa, niveis=niveis)
+
 @app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):

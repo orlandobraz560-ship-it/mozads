@@ -6,13 +6,33 @@
     <title>Editar Tarefa - Admin</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: white; padding: 20px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+        }
         .container { max-width: 600px; margin: 0 auto; }
-        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .card {
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
         .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; display: inline-block; }
-        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
-        input, select { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
-        label { display: block; margin-top: 10px; }
+        .btn-success { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: none;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
@@ -24,7 +44,7 @@
                 <input type="text" name="titulo" value="{{ tarefa.titulo }}" required>
                 
                 <label>Descrição</label>
-                <input type="text" name="descricao" value="{{ tarefa.descricao }}">
+                <textarea name="descricao" rows="3">{{ tarefa.descricao }}</textarea>
                 
                 <label>URL do Anúncio</label>
                 <input type="text" name="url" value="{{ tarefa.url }}" required>
@@ -42,7 +62,7 @@
                 </select>
                 
                 <button type="submit" class="btn-success">💾 Salvar Alterações</button>
-                <a href="/admin_tarefas" class="btn">← Cancelar</a>
+                <a href="/admin_tarefas" class="btn" style="display: block; text-align: center; margin-top: 10px;">← Cancelar</a>
             </form>
         </div>
     </div>

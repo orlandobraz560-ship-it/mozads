@@ -716,6 +716,61 @@ def admin_stats():
     conn.close()
     return jsonify(data)
 
+# ==================== ADMIN - RELATÓRIOS ====================
+@app.route('/admin_relatorios')
+@admin_obrigatorio
+def admin_relatorios():
+    conn = get_db()
+    
+    # Buscar todos os depósitos
+    depositos = conn.execute('''
+        SELECT p.*, u.nome as usuario_nome, u.email as usuario_email
+        FROM pedidos_deposito p
+        JOIN usuarios u ON p.usuario_id = u.id
+        ORDER BY p.data_pedido DESC
+        LIMIT 200
+    ''').fetchall()
+    
+    # Buscar todos os saques
+    saques = conn.execute('''
+        SELECT p.*, u.nome as usuario_nome, u.email as usuario_email
+        FROM pedidos_saque p
+        JOIN usuarios u ON p.usuario_id = u.id
+        ORDER BY p.data_pedido DESC
+        LIMIT 200
+    ''').fetchall()
+    
+    # Buscar todas as compras
+    compras = conn.execute('''
+        SELECT c.*, u.nome as usuario_nome, u.email as usuario_email, p.nome as produto_nome
+        FROM compras c
+        JOIN usuarios u ON c.usuario_id = u.id
+        JOIN produtos p ON c.produto_id = p.id
+        ORDER BY c.data_compra DESC
+        LIMIT 200
+    ''').fetchall()
+    
+    # Estatísticas
+    stats = conn.execute('''
+        SELECT 
+            (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+            (SELECT COUNT(*) FROM pedidos_deposito WHERE status = 'confirmado') as total_depositos,
+            (SELECT COALESCE(SUM(valor), 0) FROM pedidos_deposito WHERE status = 'confirmado') as total_valor_depositos,
+            (SELECT COUNT(*) FROM pedidos_saque WHERE status = 'pago') as total_saques,
+            (SELECT COALESCE(SUM(valor), 0) FROM pedidos_saque WHERE status = 'pago') as total_valor_saques,
+            (SELECT COUNT(*) FROM compras) as total_compras,
+            (SELECT COALESCE(SUM(valor), 0) FROM compras) as total_valor_compras,
+            (SELECT COALESCE(SUM(saldo_principal + saldo_comissao), 0) FROM usuarios) as saldo_total_sistema
+    ''').fetchone()
+    
+    conn.close()
+    
+    return render_template('admin_relatorios.html', 
+                         depositos=depositos, 
+                         saques=saques, 
+                         compras=compras,
+                         stats=stats)
+
 @app.route('/admin_depositos')
 @admin_obrigatorio
 def admin_depositos():

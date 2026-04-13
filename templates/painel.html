@@ -67,11 +67,11 @@
         <div class="card">
             <h3 style="margin-bottom: 12px;">📊 RESUMO DE GANHOS</h3>
             <div class="stats-grid">
-                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_ontem or 0) }} MZN</div><div class="stat-label">GANHOS ONTEM</div></div>
-                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_hoje or 0) }} MZN</div><div class="stat-label">GANHOS HOJE</div></div>
-                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_semana or 0) }} MZN</div><div class="stat-label">ESTA SEMANA</div></div>
-                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_mes or 0) }} MZN</div><div class="stat-label">ESTE MÊS</div></div>
-                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(usuario.ganhos_total or 0) }} MZN</div><div class="stat-label">RECEITA TOTAL</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(ganhos_ontem) }} MZN</div><div class="stat-label">GANHOS ONTEM</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(ganhos_hoje) }} MZN</div><div class="stat-label">GANHOS HOJE</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(ganhos_semana) }} MZN</div><div class="stat-label">ESTA SEMANA</div></div>
+                <div class="stat-item"><div class="stat-valor">{{ "%.2f"|format(ganhos_mes) }} MZN</div><div class="stat-label">ESTE MÊS</div></div><div class="stat-item">
+                <div class="stat-valor">{{ "%.2f"|format(ganhos_total) }} MZN</div><div class="stat-label">RECEITA TOTAL</div></div>
                 <div class="stat-item"><div class="stat-valor">{{ total_convidados }}</div><div class="stat-label">INDICADOS</div></div>
             </div>
         </div>

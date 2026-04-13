@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>Gerenciar Links de Tarefas</title>
+    <title>Gerenciar Links de Anúncios</title>
     <style>
         body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
         .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
@@ -10,7 +10,9 @@
         button { background: #4caf50; color: white; cursor: pointer; }
         .remover { background: #f44336; }
         ul { list-style: none; }
-        li { background: #16213e; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; }
+        li { background: #16213e; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        a { color: white; text-decoration: none; }
+        .btn-voltar { background: #e94560; display: inline-block; padding: 10px 20px; border-radius: 10px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -23,15 +25,19 @@
     </div>
     <div class="card">
         <h3>📋 Links Atuais ({{ links|length }})</h3>
+        {% if links %}
         <ul>
             {% for link in links %}
             <li>
                 <span>{{ link }}</span>
-                <a href="/remover_link/{{ loop.index0 }}" class="remover" style="background:#f44336; padding:5px 10px; border-radius:5px; text-decoration:none; color:white;">❌ Remover</a>
+                <a href="/remover_link/{{ loop.index0 }}" class="remover" style="background:#f44336; padding:5px 10px; border-radius:5px;">❌ Remover</a>
             </li>
             {% endfor %}
         </ul>
+        {% else %}
+        <p>Nenhum link cadastrado. Adicione o primeiro acima.</p>
+        {% endif %}
     </div>
-    <a href="/admin_painel" style="color:white;">← Voltar ao Painel Admin</a>
+    <a href="/admin_painel" class="btn-voltar">← Voltar ao Painel Admin</a>
 </body>
 </html>

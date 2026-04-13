@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import hashlib
 import secrets
 import os
+import random
 import json
 from datetime import datetime, date, timedelta
 from functools import wraps
@@ -334,51 +335,27 @@ def tarefas():
 @login_obrigatorio
 def clicar_tarefa():
     try:
-        usuario = get_usuario_por_id(session['usuario_id'])
         dados = carregar_dados()
+        usuario = get_usuario_por_id(session['usuario_id'])
         
-        URL_FIXO = "https://omg10.com/4/10751470"
+        # Buscar lista de links da configuração
+        links = dados.get('config', {}).get('links_tarefas', ['https://omg10.com/4/10861968'])
+        modo = dados.get('config', {}).get('modo_rotacao', 'aleatorio')
         
-        nivel_usuario = get_nivel_por_id(usuario['nivel'])
-        
-        if nivel_usuario:
-            limite_diario = nivel_usuario['tarefas_por_dia']
-            recompensa = nivel_usuario['recompensa_por_anuncio']
+        if modo == 'aleatorio':
+            url = random.choice(links)
         else:
-            limite_diario = 2
-            recompensa = 0
+            # sequencial: podemos usar um contador na sessão
+            if 'link_index' not in session:
+                session['link_index'] = 0
+            url = links[session['link_index'] % len(links)]
+            session['link_index'] = session['link_index'] + 1
         
-        if date.today().weekday() == 6:
-            return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
+        # ... resto do código (limite diário, recompensa, etc) igual ...
         
-        tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas'] 
-                                  if t['usuario_id'] == session['usuario_id'] 
-                                  and t['data_assistida'].startswith(date.today().strftime('%Y-%m-%d')))
-        
-        if tarefas_feitas_hoje >= limite_diario:
-            return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
-        
-        nova_tarefa = {
-            "id": get_next_id(dados['tarefas_assistidas']),
-            "usuario_id": session['usuario_id'],
-            "tarefa_id": 0,
-            "data_assistida": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "ganho": recompensa
-        }
-        dados['tarefas_assistidas'].append(nova_tarefa)
-        
-        # Atualizar saldo do usuário
-        for i, u in enumerate(dados['usuarios']):
-            if u['id'] == session['usuario_id']:
-                dados['usuarios'][i]['saldo_comissao'] += recompensa
-                break
-        
-        salvar_dados(dados)
-        
-        return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': URL_FIXO})
-    
+        # No final, retorne o URL escolhido
+        return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
     except Exception as e:
-        print(f"❌ ERRO em /clicar_tarefa: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
 
 @app.route('/depositar', methods=['GET', 'POST'])

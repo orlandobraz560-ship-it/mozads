@@ -98,6 +98,18 @@ def carregar_dados():
     with open(DADOS_JSON, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def atualizar_ganhos_usuario(usuario_id, valor):
+    """Atualiza os campos ganhos_hoje, ganhos_semana, ganhos_mes, ganhos_total de um usuário"""
+    dados = carregar_dados()
+    for i, u in enumerate(dados['usuarios']):
+        if u['id'] == usuario_id:
+            dados['usuarios'][i]['ganhos_hoje'] += valor
+            dados['usuarios'][i]['ganhos_semana'] += valor
+            dados['usuarios'][i]['ganhos_mes'] += valor
+            dados['usuarios'][i]['ganhos_total'] += valor
+            break
+    salvar_dados(dados)
+
 def salvar_dados(dados):
     with open(DADOS_JSON, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
@@ -268,6 +280,30 @@ def logout():
 def painel():
     usuario = get_usuario_por_id(session['usuario_id'])
     dados = carregar_dados()
+    hoje = date.today()
+    ontem = hoje - timedelta(days=1)
+    semana_passada = hoje - timedelta(days=7)
+    mes_passado = hoje - timedelta(days=30)
+
+    # Calcular ganhos a partir do histórico de tarefas_assistidas
+    ganhos_hoje = 0
+    ganhos_ontem = 0
+    ganhos_semana = 0
+    ganhos_mes = 0
+    ganhos_total = 0
+
+    for t in dados['tarefas_assistidas']:
+        if t['usuario_id'] == session['usuario_id']:
+            data_t = datetime.strptime(t['data_assistida'], '%Y-%m-%d %H:%M:%S').date()
+            if data_t == hoje:
+                ganhos_hoje += t['ganho']
+            if data_t == ontem:
+                ganhos_ontem += t['ganho']
+            if data_t >= semana_passada:
+                ganhos_semana += t['ganho']
+            if data_t >= mes_passado:
+                ganhos_mes += t['ganho']
+            ganhos_total += t['ganho']
 
     total_convidados = sum(1 for u in dados['usuarios'] if u['convidado_por'] == usuario['codigo_convite'])
 
@@ -276,10 +312,20 @@ def painel():
         if pedido['status'] == 'confirmado':
             for u in dados['usuarios']:
                 if u['id'] == pedido['usuario_id'] and u['convidado_por'] == usuario['codigo_convite']:
-                    comissao_indicacao += pedido['valor'] * 0.15   # 15% comissão
+                    comissao_indicacao += pedido['valor'] * 0.15
 
-    return render_template('painel.html', usuario=usuario,
-                          total_convidados=total_convidados, comissao_indicacao=comissao_indicacao)
+    # Adicionar também as comissões vindas de upgrades VIP (já estão no saldo, mas podem ser contabilizadas à parte se quiser)
+    # Por simplicidade, usamos os valores calculados acima.
+
+    return render_template('painel.html',
+                           usuario=usuario,
+                           total_convidados=total_convidados,
+                           comissao_indicacao=comissao_indicacao,
+                           ganhos_hoje=ganhos_hoje,
+                           ganhos_ontem=ganhos_ontem,
+                           ganhos_semana=ganhos_semana,
+                           ganhos_mes=ganhos_mes,
+                           ganhos_total=ganhos_total)
 
 @app.route('/api/saldo')
 @login_obrigatorio
@@ -366,9 +412,11 @@ def clicar_tarefa():
             limite_diario = 2
             recompensa = 0
 
+        # Verificar se é domingo
         if date.today().weekday() == 6:
             return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
 
+        # Contar tarefas feitas hoje
         tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas']
                                   if t['usuario_id'] == session['usuario_id']
                                   and t['data_assistida'].startswith(date.today().strftime('%Y-%m-%d')))
@@ -376,7 +424,7 @@ def clicar_tarefa():
         if tarefas_feitas_hoje >= limite_diario:
             return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
 
-        # Registrar tarefa
+        # Registrar nova tarefa assistida
         nova_tarefa = {
             "id": get_next_id(dados['tarefas_assistidas']),
             "usuario_id": session['usuario_id'],
@@ -386,13 +434,17 @@ def clicar_tarefa():
         }
         dados['tarefas_assistidas'].append(nova_tarefa)
 
-        # Adicionar saldo ao usuário
+        # Adicionar saldo ao usuário (comissão)
         for i, u in enumerate(dados['usuarios']):
             if u['id'] == session['usuario_id']:
                 dados['usuarios'][i]['saldo_comissao'] += recompensa
                 break
 
         salvar_dados(dados)
+
+        # ATUALIZAR OS CONTADORES DE GANHOS (resumo)
+        atualizar_ganhos_usuario(session['usuario_id'], recompensa)
+
         return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
 
     except Exception as e:
@@ -531,13 +583,14 @@ def vip():
 
                     # Comissão de 15% para quem convidou
                     if usuario['convidado_por']:
-                        comissao = valor_novo_vip * 0.15
-                        convidante = get_usuario_por_codigo(usuario['convidado_por'])
-                        if convidante:
-                            for i, u in enumerate(dados['usuarios']):
-                                if u['id'] == convidante['id']:
-                                    dados['usuarios'][i]['saldo_comissao'] += comissao
-                                    break
+                       comissao = valor_novo_vip * 0.15
+                          convidante = get_usuario_por_codigo(usuario['convidado_por'])
+                            if convidante:
+                               for i, u in enumerate(dados['usuarios']):
+                            if u['id'] == convidante['id']:
+                               dados['usuarios'][i]['saldo_comissao'] += comissao
+                               atualizar_ganhos_usuario(convidante['id'], comissao)   # <-- ADICIONE ESTA LINHA
+                               break
 
                     # Atualizar usuário
                     for i, u in enumerate(dados['usuarios']):

@@ -265,7 +265,7 @@ def painel():
         if pedido['status'] == 'confirmado':
             for u in dados['usuarios']:
                 if u['id'] == pedido['usuario_id'] and u['convidado_por'] == usuario['codigo_convite']:
-                    comissao_indicacao += pedido['valor'] * 0.25
+                    comissao_indicacao += pedido['valor'] * 0.15
     
     return render_template('painel.html', usuario=usuario, 
                           total_convidados=total_convidados, comissao_indicacao=comissao_indicacao)
@@ -422,7 +422,7 @@ def saque():
             flash('Saldo insuficiente!', 'erro')
             return redirect(url_for('saque'))
         
-        taxa = max(valor * 0.05, 10)
+        taxa = max(valor * 0.15, 10)
         valor_liquido = valor - taxa
         
         dados = carregar_dados()
@@ -481,9 +481,9 @@ def vip():
                     restante = valor_novo_vip - min(usuario['saldo_principal'], valor_novo_vip)
                     novo_saldo_comissao = usuario['saldo_comissao'] - restante
                     
-                    # Comissão de 25% para quem convidou
+                    # Comissão de 15% para quem convidou
                     if usuario['convidado_por']:
-                        comissao = valor_novo_vip * 0.25
+                        comissao = valor_novo_vip * 0.15
                         convidante = get_usuario_por_codigo(usuario['convidado_por'])
                         if convidante:
                             for i, u in enumerate(dados['usuarios']):

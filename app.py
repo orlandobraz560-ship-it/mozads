@@ -15,12 +15,13 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# ==================== CONFIGURAÇÕES DE UPLOAD ====================
+# Define primeiro
 UPLOAD_FOLDER = 'static/produtos'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-if not os.path.exists('comprovantes'):
-    os.makedirs('comprovantes')
+# Depois usa
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

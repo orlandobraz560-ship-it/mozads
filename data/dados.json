@@ -1,0 +1,66 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "nome": "Administrador",
+      "email": "admin@admin.com",
+      "telefone": "",
+      "senha": "97e2b0b0c82d4f084a55a66cc4db680686764f558056a2968ec08a2e283f598a",
+      "codigo_convite": "ADMIN001",
+      "convidado_por": null,
+      "nivel": 0,
+      "nivel_nome": "Admin",
+      "saldo_principal": 0,
+      "saldo_comissao": 0,
+      "is_admin": 1,
+      "data_registro": "2024-01-01 00:00:00"
+    }
+  ],
+  "niveis": [
+    { "id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 2, "recompensa_por_anuncio": 0, "duracao_dias": 180 },
+    { "id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180 },
+    { "id": 2, "nome": "VIP 2", "investimento": 3000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 10, "duracao_dias": 180 },
+    { "id": 3, "nome": "VIP 3", "investimento": 12000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 40, "duracao_dias": 180 },
+    { "id": 4, "nome": "VIP 4", "investimento": 30000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 100, "duracao_dias": 180 },
+    { "id": 5, "nome": "VIP 5", "investimento": 90000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 100, "duracao_dias": 180 },
+    { "id": 6, "nome": "VIP 6", "investimento": 300000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 500, "duracao_dias": 180 },
+    { "id": 7, "nome": "VIP 7", "investimento": 900000, "tarefas_por_dia": 20, "recompensa_por_anuncio": 1500, "duracao_dias": 180 }
+  ],
+  "pedidos_deposito": [],
+  "pedidos_saque": [],
+  "tarefas_multimidia": [
+    {
+      "id": 1,
+      "titulo": "Anúncio Diário",
+      "descricao": "Clique para assistir e ganhar",
+      "tipo": "link",
+      "url": "https://omg10.com/4/10861968",
+      "recompensa": 10,
+      "duracao_segundos": 30,
+      "nivel_requerido": 1,
+      "ativo": 1
+    }
+  ],
+  "tarefas_assistidas": [],
+  "produtos": [
+    { "id": 1, "nome": "Smartphone XYZ", "descricao": "Smartphone de última geração", "preco": 5000, "imagem": "https://placehold.co/400x400/667eea/white?text=Smartphone", "categoria": "eletronicos", "ativo": 1 },
+    { "id": 2, "nome": "Fones Bluetooth", "descricao": "Fones de ouvido sem fio", "preco": 800, "imagem": "https://placehold.co/400x400/667eea/white?text=Fones", "categoria": "eletronicos", "ativo": 1 },
+    { "id": 3, "nome": "Camiseta Premium", "descricao": "Camiseta 100% algodão", "preco": 300, "imagem": "https://placehold.co/400x400/667eea/white?text=Camiseta", "categoria": "moda", "ativo": 1 },
+    { "id": 4, "nome": "Tênis Esportivo", "descricao": "Tênis confortável", "preco": 1200, "imagem": "https://placehold.co/400x400/667eea/white?text=Tênis", "categoria": "moda", "ativo": 1 },
+    { "id": 5, "nome": "Voucher Amazon", "descricao": "Voucher de 100 MZN", "preco": 100, "imagem": "https://placehold.co/400x400/667eea/white?text=Voucher", "categoria": "vouchers", "ativo": 1 }
+  ],
+  "compras": [],
+  "config": {
+    "links_tarefas": [
+      "https://omg10.com/4/10861968",
+      "https://exemplo.com/anuncio2",
+      "https://outro-link.com/anuncio3"
+    ],
+    "modo_rotacao": "aleatorio",
+    "whatsapp": "879267774",
+    "grupo": "https://chat.whatsapp.com/BPsKDQclcG9J0E0J5glvC6?mode=gi_t",
+    "site_nome": "MOZ ADS",
+    "taxa_saque": 15,
+    "min_saque": 200
+  }
+}

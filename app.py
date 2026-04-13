@@ -12,12 +12,12 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_mude_para_algo_seguro_123456')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 # ==================== CONFIGURAÇÕES DE UPLOAD ====================
 UPLOAD_FOLDER = 'static/produtos'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 if not os.path.exists('comprovantes'):
     os.makedirs('comprovantes')

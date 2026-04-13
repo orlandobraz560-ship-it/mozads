@@ -399,6 +399,15 @@ def clicar_tarefa():
         print(f"❌ ERRO em /clicar_tarefa: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
 
+@app.route('/tabela_rendimentos')
+@login_obrigatorio
+def tabela_rendimentos():
+    """Exibe a tabela de rendimentos por nível (PEPSI)"""
+    dados = carregar_dados()
+    niveis = dados.get('niveis', [])
+    # Filtra apenas níveis com id >= 0 (todos)
+    return render_template('tabela_rendimentos.html', niveis=niveis)
+
 @app.route('/depositar', methods=['GET', 'POST'])
 @login_obrigatorio
 def depositar():

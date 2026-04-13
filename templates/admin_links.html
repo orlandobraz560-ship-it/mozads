@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Links de Tarefas</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        input, button { padding: 10px; border-radius: 8px; border: none; margin: 5px; }
+        button { background: #4caf50; color: white; cursor: pointer; }
+        .remover { background: #f44336; }
+        ul { list-style: none; }
+        li { background: #16213e; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔗 Links dos Anúncios (Cada clique usa um link diferente)</h2>
+        <form method="POST" action="/adicionar_link">
+            <input type="text" name="link" placeholder="https://exemplo.com/anuncio" required style="width: 70%;">
+            <button type="submit">➕ Adicionar Link</button>
+        </form>
+    </div>
+    <div class="card">
+        <h3>📋 Links Atuais ({{ links|length }})</h3>
+        <ul>
+            {% for link in links %}
+            <li>
+                <span>{{ link }}</span>
+                <a href="/remover_link/{{ loop.index0 }}" class="remover" style="background:#f44336; padding:5px 10px; border-radius:5px; text-decoration:none; color:white;">❌ Remover</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <a href="/admin_painel" style="color:white;">← Voltar ao Painel Admin</a>
+</body>
+</html>

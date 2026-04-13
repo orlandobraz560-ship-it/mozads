@@ -27,7 +27,7 @@ def allowed_file(filename):
 
 # ==================== ARQUIVO JSON ====================
 
-DADOS_JSON = 'dados.json'
+DADOS_JSON = 'data', 'dados.json'
 
 def carregar_dados():
     """Carrega os dados do arquivo JSON"""

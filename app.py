@@ -815,6 +815,36 @@ def admin_relatorios():
     
     return render_template('admin_relatorios.html', depositos=depositos, saques=saques, compras=compras, stats=stats)
 
+@app.route('/admin_links')
+@admin_obrigatorio
+def admin_links():
+    dados = carregar_dados()
+    links = dados.get('config', {}).get('links_tarefas', [])
+    return render_template('admin_links.html', links=links)
+
+@app.route('/adicionar_link', methods=['POST'])
+@admin_obrigatorio
+def adicionar_link():
+    novo_link = request.form['link']
+    dados = carregar_dados()
+    if 'links_tarefas' not in dados.get('config', {}):
+        dados['config']['links_tarefas'] = []
+    dados['config']['links_tarefas'].append(novo_link)
+    salvar_dados(dados)
+    flash('Link adicionado!', 'sucesso')
+    return redirect(url_for('admin_links'))
+
+@app.route('/remover_link/<int:index>')
+@admin_obrigatorio
+def remover_link(index):
+    dados = carregar_dados()
+    if 'links_tarefas' in dados.get('config', {}):
+        if 0 <= index < len(dados['config']['links_tarefas']):
+            dados['config']['links_tarefas'].pop(index)
+            salvar_dados(dados)
+            flash('Link removido!', 'sucesso')
+    return redirect(url_for('admin_links'))
+
 @app.route('/confirmar_deposito/<int:pedido_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def confirmar_deposito(pedido_id):

@@ -12,10 +12,6 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_mude_para_algo_seguro_123456')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Configuração para upload de imagens
-UPLOAD_FOLDER = 'static/produtos'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -25,14 +21,16 @@ if not os.path.exists('comprovantes'):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# ==================== ARQUIVO JSON ====================
-
-DADOS_JSON = 'data', 'dados.json'
+# Garantir que a pasta 'data' exista (para persistência no Render)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+DADOS_JSON = os.path.join(DATA_DIR, 'dados.json')
 
 def carregar_dados():
-    """Carrega os dados do arquivo JSON"""
+    """Carrega os dados do arquivo JSON. Se não existir, cria com valores padrão."""
     if not os.path.exists(DADOS_JSON):
-        # Criar arquivo padrão
+        print("⚠️ dados.json não encontrado. Criando novo arquivo com valores padrão...")
         dados_padrao = {
             "usuarios": [
                 {
@@ -74,11 +72,24 @@ def carregar_dados():
                 {"id": 4, "nome": "Tênis Esportivo", "descricao": "Tênis confortável", "preco": 1200, "imagem": "https://placehold.co/400x400/667eea/white?text=Tênis", "categoria": "moda", "ativo": 1},
                 {"id": 5, "nome": "Voucher Amazon", "descricao": "Voucher de 100 MZN", "preco": 100, "imagem": "https://placehold.co/400x400/667eea/white?text=Voucher", "categoria": "vouchers", "ativo": 1}
             ],
-            "compras": []
+            "compras": [],
+            "config": {
+                "links_tarefas": [
+                    "https://omg10.com/4/10861968",
+                    "https://exemplo.com/anuncio2",
+                    "https://outro-link.com/anuncio3"
+                ],
+                "modo_rotacao": "aleatorio",
+                "whatsapp": "879267774",
+                "grupo": "https://chat.whatsapp.com/DwPuPeBzKAfEXz6efHtIVP",
+                "site_nome": "MOZ ADS",
+                "taxa_saque": 15,
+                "min_saque": 100
+            }
         }
         salvar_dados(dados_padrao)
         return dados_padrao
-    
+
     with open(DADOS_JSON, 'r', encoding='utf-8') as f:
         return json.load(f)
 

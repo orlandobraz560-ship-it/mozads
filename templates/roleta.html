@@ -4,18 +4,15 @@
     <meta charset="UTF-8">
     <title>Roleta da Sorte - MOZ ADS</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; min-height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; padding: 20px; }
-        .container { max-width: 600px; width: 100%; text-align: center; }
-        h1 { margin-bottom: 20px; text-shadow: 0 0 5px gold; }
-        .roleta { width: 300px; height: 300px; margin: 20px auto; position: relative; border-radius: 50%; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); transition: transform 0.1s; }
-        canvas { width: 100%; height: 100%; background: #2c3e50; border-radius: 50%; }
-        .btn-girar { background: linear-gradient(45deg, #f39c12, #e67e22); border: none; color: white; font-size: 24px; font-weight: bold; padding: 12px 30px; border-radius: 50px; cursor: pointer; margin: 20px; transition: 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; min-height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; text-align: center; padding: 20px; }
+        .container { max-width: 500px; background: #0f3460; border-radius: 30px; padding: 30px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        h1 { color: gold; }
+        .btn-girar { background: linear-gradient(45deg, #f39c12, #e67e22); border: none; color: white; font-size: 28px; font-weight: bold; padding: 15px 40px; border-radius: 60px; cursor: pointer; margin: 20px; transition: 0.2s; }
         .btn-girar:active { transform: scale(0.95); }
         .btn-girar:disabled { opacity: 0.5; cursor: not-allowed; }
-        .resultado { font-size: 28px; font-weight: bold; background: #000000aa; padding: 15px; border-radius: 20px; margin-top: 20px; }
-        .ja-usou { font-size: 24px; color: #f1c40f; }
-        a { color: #f39c12; text-decoration: none; margin-top: 20px; display: inline-block; }
+        .resultado { font-size: 24px; margin-top: 20px; background: #000000aa; padding: 15px; border-radius: 20px; }
+        .ja-usou { font-size: 20px; color: #f1c40f; }
+        a { color: #f39c12; margin-top: 20px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -24,12 +21,10 @@
     <p>Gire a roleta e ganhe dinheiro real!<br><strong>Apenas uma chance por usuário!</strong></p>
 
     {% if ja_usou %}
-        <div class="ja-usou">✅ Você já utilizou sua roleta. Volte amanhã? (não, é única!)</div>
+        <div class="ja-usou">✅ Você já utilizou sua roleta.</div>
         <div class="resultado">🎉 Seu prêmio já foi creditado. Boa sorte na próxima!</div>
     {% else %}
-        <div class="roleta">
-            <canvas id="wheelCanvas" width="500" height="500"></canvas>
-        </div>
+        <div style="font-size: 40px; margin: 20px;">🎰</div>
         <button class="btn-girar" id="spinBtn">GIRAR 🎲</button>
         <div class="resultado" id="resultado"></div>
     {% endif %}
@@ -38,146 +33,34 @@
 </div>
 
 <script>
-    // Configuração da roleta (cores e setores)
-    const setores = [
-        { label: "10", valor: 10, cor: "#3498db" },
-        { label: "50", valor: 50, cor: "#e74c3c" },
-        { label: "200", valor: 200, cor: "#f1c40f" },
-        { label: "1000", valor: 1000, cor: "#2ecc71" },
-        { label: "10", valor: 10, cor: "#9b59b6" },
-        { label: "50", valor: 50, cor: "#e67e22" },
-        { label: "10", valor: 10, cor: "#1abc9c" },
-        { label: "200", valor: 200, cor: "#e84393" }
-    ];
+    const spinBtn = document.getElementById('spinBtn');
+    if (spinBtn) {
+        spinBtn.addEventListener('click', function() {
+            spinBtn.disabled = true;
+            spinBtn.innerText = "GIRANDO...";
+            document.getElementById('resultado').innerHTML = "⏳ Processando...";
 
-    let canvas = document.getElementById('wheelCanvas');
-    let ctx = canvas.getContext('2d');
-    let anguloPorSetor = (Math.PI * 2) / setores.length;
-    let anguloAtual = 0;
-    let girando = false;
-
-    function desenharRoleta() {
-        let startAngle = anguloAtual;
-        for (let i = 0; i < setores.length; i++) {
-            let endAngle = startAngle + anguloPorSetor;
-            ctx.beginPath();
-            ctx.fillStyle = setores[i].cor;
-            ctx.moveTo(250, 250);
-            ctx.arc(250, 250, 250, startAngle, endAngle);
-            ctx.fill();
-            ctx.save();
-            ctx.translate(250, 250);
-            ctx.rotate(startAngle + anguloPorSetor / 2);
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 20px 'Segoe UI'";
-            ctx.fillText(setores[i].label, 130, 15);
-            ctx.restore();
-            startAngle = endAngle;
-        }
-        // Desenhar círculo central
-        ctx.beginPath();
-        ctx.arc(250, 250, 50, 0, Math.PI * 2);
-        ctx.fillStyle = "#f1c40f";
-        ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.font = "bold 24px Arial";
-        ctx.fillText("★", 235, 265);
-    }
-
-    function girarRoleta() {
-        if (girando) return;
-        girando = true;
-        let spinBtn = document.getElementById('spinBtn');
-        spinBtn.disabled = true;
-        spinBtn.innerText = "GIRANDO...";
-
-        // Ângulo final aleatório (múltiplo de voltas + setor)
-        let voltas = Math.floor(Math.random() * 10) + 20; // 20 a 30 voltas
-        let anguloFinal = anguloAtual + (voltas * 2 * Math.PI);
-        let duracao = 3000; // 3 segundos
-        let inicio = null;
-
-        function animar(timestamp) {
-            if (!inicio) inicio = timestamp;
-            let elapsed = timestamp - inicio;
-            let progress = Math.min(1, elapsed / duracao);
-            let anguloAtualAnim = anguloAtual + (anguloFinal - anguloAtual) * progress;
-            // Redesenha com ângulo interpolado
-            ctx.clearRect(0, 0, 500, 500);
-            let start = anguloAtualAnim;
-            for (let i = 0; i < setores.length; i++) {
-                let end = start + anguloPorSetor;
-                ctx.beginPath();
-                ctx.fillStyle = setores[i].cor;
-                ctx.moveTo(250, 250);
-                ctx.arc(250, 250, 250, start, end);
-                ctx.fill();
-                ctx.save();
-                ctx.translate(250, 250);
-                ctx.rotate(start + anguloPorSetor / 2);
-                ctx.fillStyle = "#fff";
-                ctx.font = "bold 20px 'Segoe UI'";
-                ctx.fillText(setores[i].label, 130, 15);
-                ctx.restore();
-                start = end;
-            }
-            ctx.beginPath();
-            ctx.arc(250, 250, 50, 0, Math.PI * 2);
-            ctx.fillStyle = "#f1c40f";
-            ctx.fill();
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 24px Arial";
-            ctx.fillText("★", 235, 265);
-
-            if (progress < 1) {
-                requestAnimationFrame(animar);
-            } else {
-                // Fim da animação: determinar setor onde está o ponteiro (0° = topo)
-                let anguloPonteiro = (Math.PI * 3 / 2) - anguloAtualAnim; // ponteiro fixo no topo
-                anguloPonteiro = ((anguloPonteiro % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-                let indexSetor = Math.floor(anguloPonteiro / anguloPorSetor);
-                let premio = setores[indexSetor].valor;
-                finalizar(premio);
-            }
-        }
-
-        requestAnimationFrame(animar);
-        anguloAtual = anguloFinal % (2 * Math.PI);
-    }
-
-    function finalizar(premio) {
-        fetch('/spin_wheel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            let resultadoDiv = document.getElementById('resultado');
-            if (data.sucesso) {
-                resultadoDiv.innerHTML = `🎉 PARABÉNS! Você ganhou ${data.premio} MZN! 🎉<br>O valor foi adicionado ao seu saldo.`;
-            } else {
-                resultadoDiv.innerHTML = `❌ ${data.erro}`;
-            }
-            document.getElementById('spinBtn').disabled = false;
-            document.getElementById('spinBtn').innerText = "GIRAR";
-            girando = false;
-            // Recarregar página após 3 segundos para mostrar que já usou
-            setTimeout(() => location.reload(), 3000);
-        })
-        .catch(err => {
-            console.error(err);
-            resultadoDiv.innerHTML = "Erro ao processar giro. Tente novamente.";
-            document.getElementById('spinBtn').disabled = false;
-            document.getElementById('spinBtn').innerText = "GIRAR";
-            girando = false;
+            fetch('/spin_wheel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    document.getElementById('resultado').innerHTML = `🎉 PARABÉNS! Você ganhou ${data.premio} MZN! 🎉<br>O valor foi adicionado ao seu saldo.`;
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    document.getElementById('resultado').innerHTML = `❌ ${data.erro}`;
+                    spinBtn.disabled = false;
+                    spinBtn.innerText = "GIRAR";
+                }
+            })
+            .catch(error => {
+                document.getElementById('resultado').innerHTML = "❌ Erro ao processar. Tente novamente.";
+                spinBtn.disabled = false;
+                spinBtn.innerText = "GIRAR";
+            });
         });
-    }
-
-    if (document.getElementById('spinBtn')) {
-        desenharRoleta();
-        document.getElementById('spinBtn').onclick = girarRoleta;
-    } else {
-        // já usou a roleta, não desenha
     }
 </script>
 </body>

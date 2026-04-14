@@ -99,8 +99,14 @@ def carregar_dados():
     with open(DADOS_JSON, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def salvar_dados(dados):
+    with open(DADOS_JSON, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+# ==================== FUNÇÕES AUXILIARES ====================
+
 def atualizar_ganhos_usuario(usuario_id, valor):
-    """Atualiza os campos ganhos_hoje, ganhos_semana, ganhos_mes, ganhos_total de um usuário"""
+    """Soma os ganhos ao usuário (chamada a cada tarefa/comissão)"""
     dados = carregar_dados()
     for i, u in enumerate(dados['usuarios']):
         if u['id'] == usuario_id:
@@ -111,9 +117,24 @@ def atualizar_ganhos_usuario(usuario_id, valor):
             break
     salvar_dados(dados)
 
-def salvar_dados(dados):
-    with open(DADOS_JSON, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
+def garantir_campos_ganhos():
+    """Cria os campos se não existirem (migração de dados)"""
+    dados = carregar_dados()
+    alterado = False
+    for u in dados['usuarios']:
+        if 'ganhos_hoje' not in u:
+            u['ganhos_hoje'] = 0
+            u['ganhos_ontem'] = 0
+            u['ganhos_semana'] = 0
+            u['ganhos_mes'] = 0
+            u['ganhos_total'] = 0
+            alterado = True
+    if alterado:
+        salvar_dados(dados)
+        print("✅ Campos de ganhos adicionados aos usuários existentes.")
+
+# Executa a migração uma vez
+garantir_campos_ganhos()
 
 def get_next_id(lista):
     if not lista:

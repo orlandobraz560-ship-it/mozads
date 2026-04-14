@@ -913,6 +913,29 @@ def admin_configuracoes():
 
     return render_template('admin_configuracoes.html', niveis=niveis, config=config)
 
+@app.route('/admin_niveis', methods=['GET', 'POST'])
+@admin_obrigatorio
+def admin_niveis():
+    dados = carregar_dados()
+    niveis = dados['niveis']
+
+    if request.method == 'POST':
+        for nivel in niveis:
+            nivel_id = nivel['id']
+            if nivel_id == 0:
+                continue  # Estagiário não editável
+            tarefas_key = f'tarefas_{nivel_id}'
+            recompensa_key = f'recompensa_{nivel_id}'
+            if tarefas_key in request.form:
+                nivel['tarefas_por_dia'] = int(request.form[tarefas_key])
+            if recompensa_key in request.form:
+                nivel['recompensa_por_anuncio'] = float(request.form[recompensa_key])
+        salvar_dados(dados)
+        flash('✅ Níveis atualizados com sucesso!', 'sucesso')
+        return redirect(url_for('admin_niveis'))
+
+    return render_template('admin_niveis.html', niveis=niveis)
+
 @app.route('/admin_editar_shop')
 @admin_obrigatorio
 def admin_editar_shop():

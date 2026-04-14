@@ -50,6 +50,7 @@ def carregar_dados():
                     "nivel_nome": "Admin",
                     "saldo_principal": 0,
                     "saldo_comissao": 0,
+                    "roleta_usada": 0,
                     "is_admin": 1,
                     "data_registro": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
@@ -502,6 +503,47 @@ def depositar():
         return redirect(url_for('painel'))
 
     return render_template('depositos.html')
+
+@app.route('/roleta')
+@login_obrigatorio
+def roleta():
+    usuario = get_usuario_por_id(session['usuario_id'])
+    ja_usou = usuario.get('roleta_usada', 0)
+    return render_template('roleta.html', ja_usou=ja_usou)
+
+@app.route('/spin_wheel', methods=['POST'])
+@login_obrigatorio
+def spin_wheel():
+    dados = carregar_dados()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    
+    if usuario.get('roleta_usada', 0) == 1:
+        return jsonify({'sucesso': False, 'erro': 'Você já usou sua roleta!'})
+    
+    # Sorteio dos prêmios
+    rand = random.random()
+    if rand < 0.80:          # 80% chance
+        premio = 20
+    elif rand < 0.95:        # 15% chance
+        premio = 50
+    elif rand < 0.99:        # 4% chance
+        premio = 100
+    else:                    # 1% chance
+        premio = 150
+    
+    # Atualizar saldo do usuário (adiciona ao saldo_comissao)
+    for i, u in enumerate(dados['usuarios']):
+        if u['id'] == session['usuario_id']:
+            dados['usuarios'][i]['saldo_comissao'] += premio
+            dados['usuarios'][i]['roleta_usada'] = 1
+            break
+    
+    salvar_dados(dados)
+    
+    # Atualizar ganhos (opcional, para aparecer no resumo)
+    atualizar_ganhos_usuario(session['usuario_id'], premio)
+    
+    return jsonify({'sucesso': True, 'premio': premio})
 
 @app.route('/saque', methods=['GET', 'POST'])
 @login_obrigatorio

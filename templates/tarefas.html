@@ -142,57 +142,61 @@
         }
 
         function fazerTarefa() {
-    if (tarefasFeitasHoje >= limiteDiario && limiteDiario > 0) {
-        mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
-        return;
-    }
-
-    const btn = document.getElementById('btnFazerTarefas');
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Processando...';
-
-    fetch('/clicar_tarefa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.sucesso) {
-            mostrarToast(`✅ Você ganhou ${data.recompensa} MZN!`, 'sucesso');
-
-            // Abrir o link em nova ABA (evita bloqueio de popup)
-            if (data.url && data.url !== '#') {
-                // Cria um link invisível e dispara o clique
-                const link = document.createElement('a');
-                link.href = data.url;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                console.warn('URL inválida ou não fornecida:', data.url);
-                mostrarToast('⚠️ Link do anúncio indisponível.', 'erro');
+            if (tarefasFeitasHoje >= limiteDiario && limiteDiario > 0) {
+                mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
+                return;
             }
 
-            // Recarrega a página após 2 segundos para atualizar contador
-            setTimeout(() => location.reload(), 2000);
-        } else {
-            mostrarToast(`❌ ${data.erro}`, 'erro');
-            btn.disabled = false;
-            btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
-        }
-    })
-    .catch(error => {
-        console.error('Erro na requisição:', error);
-        mostrarToast('❌ Erro de conexão. Tente novamente.', 'erro');
-        btn.disabled = false;
-        btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
-    });
-}
+            const btn = document.getElementById('btnFazerTarefas');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Processando...';
 
-       
+            fetch('/clicar_tarefa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Resposta do servidor:', data); // debug
+                if (data.sucesso) {
+                    mostrarToast(`✅ Você ganhou ${data.recompensa} MZN!`, 'sucesso');
+
+                    // Abrir o link em nova ABA (evita bloqueio de popup)
+                    if (data.url && data.url !== '#') {
+                        // Tenta window.open primeiro
+                        const newTab = window.open(data.url, '_blank');
+                        if (!newTab || newTab.closed || typeof newTab === 'undefined') {
+                            // Fallback: cria link invisível e clica
+                            const link = document.createElement('a');
+                            link.href = data.url;
+                            link.target = '_blank';
+                            link.rel = 'noopener noreferrer';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    } else {
+                        console.warn('URL inválida ou não fornecida:', data.url);
+                        mostrarToast('⚠️ Link do anúncio indisponível.', 'erro');
+                    }
+
+                    // Recarrega a página após 2 segundos para atualizar contador
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    mostrarToast(`❌ ${data.erro}`, 'erro');
+                    btn.disabled = false;
+                    btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
+                }
+            })
+            .catch(error => {
+                console.error('Erro na requisição:', error);
+                mostrarToast('❌ Erro de conexão. Tente novamente.', 'erro');
+                btn.disabled = false;
+                btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
+            });
+        }
+
         function mostrarToast(mensagem, tipo) {
             const cores = { sucesso: '#4caf50', erro: '#f44336', info: '#2196f3' };
             const toast = document.createElement('div');

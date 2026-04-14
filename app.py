@@ -393,10 +393,8 @@ def clicar_tarefa():
         dados = carregar_dados()
         usuario = get_usuario_por_id(session['usuario_id'])
 
-        # Buscar lista de links da configuração
-        links = dados.get('config', {}).get('links_tarefas', [])
-        if not links:
-            links = ['https://omg10.com/4/10861968']  # fallback
+        # Buscar links (com fallback)
+        links = dados.get('config', {}).get('links_tarefas', ['https://omg10.com/4/10861968'])
         modo = dados.get('config', {}).get('modo_rotacao', 'aleatorio')
         if modo == 'aleatorio':
             url = random.choice(links)
@@ -404,42 +402,38 @@ def clicar_tarefa():
             if 'link_index' not in session:
                 session['link_index'] = 0
             url = links[session['link_index'] % len(links)]
-            session['link_index'] = session['link_index'] + 1
+            session['link_index'] += 1
 
-        # Verificar se URL é válida (não vazia)
-        if not url or url == '#':
-            url = 'https://omg10.com/4/10861968'  # fallback seguro
-
-        # Obter informações do nível
-        nivel_usuario = get_nivel_por_id(usuario['nivel'])
-        if nivel_usuario:
-            limite_diario = nivel_usuario['tarefas_por_dia']
-            recompensa = nivel_usuario['recompensa_por_anuncio']
+        # Dados do nível
+        nivel = get_nivel_por_id(usuario['nivel'])
+        if nivel:
+            limite = nivel['tarefas_por_dia']
+            recompensa = nivel['recompensa_por_anuncio']
         else:
-            limite_diario = 2
+            limite = 2
             recompensa = 0
 
-        # Verificar domingo
+        # Domingo
         if date.today().weekday() == 6:
-            return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
+            return jsonify({'sucesso': False, 'erro': 'Domingo sem tarefas!'})
 
-        # Contar tarefas feitas hoje
-        tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas']
-                                  if t['usuario_id'] == session['usuario_id']
-                                  and t['data_assistida'].startswith(date.today().strftime('%Y-%m-%d')))
+        # Contar tarefas de hoje
+        hoje = date.today().strftime('%Y-%m-%d')
+        feitas = sum(1 for t in dados['tarefas_assistidas']
+                     if t['usuario_id'] == session['usuario_id'] and t['data_assistida'].startswith(hoje))
 
-        if tarefas_feitas_hoje >= limite_diario:
-            return jsonify({'sucesso': False, 'erro': f'Limite de {limite_diario} tarefas hoje atingido!'})
+        if feitas >= limite:
+            return jsonify({'sucesso': False, 'erro': f'Limite de {limite} tarefas hoje!'})
 
-        # Registrar nova tarefa
-        nova_tarefa = {
+        # Registrar
+        nova = {
             "id": get_next_id(dados['tarefas_assistidas']),
             "usuario_id": session['usuario_id'],
             "tarefa_id": 0,
             "data_assistida": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "ganho": recompensa
         }
-        dados['tarefas_assistidas'].append(nova_tarefa)
+        dados['tarefas_assistidas'].append(nova)
 
         # Adicionar saldo
         for i, u in enumerate(dados['usuarios']):
@@ -450,13 +444,12 @@ def clicar_tarefa():
         salvar_dados(dados)
         atualizar_ganhos_usuario(session['usuario_id'], recompensa)
 
-        # Retornar a URL corretamente
         return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})
 
     except Exception as e:
-        print(f"❌ ERRO em /clicar_tarefa: {str(e)}")
+        print(f"❌ /clicar_tarefa: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
-
+        
 @app.route('/tabela_rendimentos')
 @login_obrigatorio
 def tabela_rendimentos():

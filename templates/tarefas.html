@@ -146,39 +146,47 @@
                 mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
                 return;
             }
-            
-            // Desabilitar botão para evitar múltiplos cliques
-            const btn = document.getElementById('btnFazerTarefas');
-            btn.disabled = true;
-            btn.innerHTML = '⏳ Processando...';
-            
-            fetch('/clicar_tarefa', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.sucesso) {
-                    mostrarToast(`✅ Você ganhou ${recompensa} MZN!`, 'sucesso');
-                    // Abrir o link do anúncio em nova aba
-                    if (data.url) {
-                        window.open(data.url, '_blank');
-                    }
-                    // Recarregar a página para atualizar o contador
-                    setTimeout(() => location.reload(), 2000);
-                } else {
-                    mostrarToast(`❌ ${data.erro}`, 'erro');
-                    btn.disabled = false;
-                    btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
-                }
-            })
-            .catch(error => {
-                mostrarToast('❌ Erro de conexão', 'erro');
-                btn.disabled = false;
-                btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
-            });
+
+        function fazerTarefa() {
+    if (tarefasFeitasHoje >= limiteDiario && limiteDiario > 0) {
+        mostrarToast('✅ Você já fez todas as tarefas de hoje! Volte amanhã.', 'erro');
+        return;
+    }
+    
+    const btn = document.getElementById('btnFazerTarefas');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Processando...';
+    
+    fetch('/clicar_tarefa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            mostrarToast(`✅ Você ganhou ${data.recompensa} MZN!`, 'sucesso');
+            // Abrir o link em nova aba
+            if (data.url && data.url !== '#') {
+                window.open(data.url, '_blank');
+            } else {
+                console.warn('URL inválida:', data.url);
+                mostrarToast('⚠️ Link do anúncio não disponível.', 'erro');
+            }
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            mostrarToast(`❌ ${data.erro}`, 'erro');
+            btn.disabled = false;
+            btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
         }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarToast('❌ Erro de conexão', 'erro');
+        btn.disabled = false;
+        btn.innerHTML = `🎬 FAZER TAREFA (${recompensa} MZN)`;
+    });
+}
 
         function mostrarToast(mensagem, tipo) {
             const cores = { sucesso: '#4caf50', erro: '#f44336', info: '#2196f3' };

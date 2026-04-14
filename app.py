@@ -581,16 +581,18 @@ def vip():
                     restante = valor_novo_vip - min(usuario['saldo_principal'], valor_novo_vip)
                     novo_saldo_comissao = usuario['saldo_comissao'] - restante
 
+
                     # Comissão de 15% para quem convidou
                     if usuario['convidado_por']:
                        comissao = valor_novo_vip * 0.15
-                          convidante = get_usuario_por_codigo(usuario['convidado_por'])
-                            if convidante:
-                               for i, u in enumerate(dados['usuarios']):
-                            if u['id'] == convidante['id']:
-                               dados['usuarios'][i]['saldo_comissao'] += comissao
-                               atualizar_ganhos_usuario(convidante['id'], comissao)   # <-- ADICIONE ESTA LINHA
-                               break
+                       convidante = get_usuario_por_codigo(usuario['convidado_por'])
+                       if convidante:
+                           for i, u in enumerate(dados['usuarios']):
+                               if u['id'] == convidante['id']:
+                                   dados['usuarios'][i]['saldo_comissao'] += comissao
+                                   atualizar_ganhos_usuario(convidante['id'], comissao)
+                                   break  
+
 
                     # Atualizar usuário
                     for i, u in enumerate(dados['usuarios']):

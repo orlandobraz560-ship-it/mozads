@@ -520,18 +520,18 @@ def spin_wheel():
     if usuario.get('roleta_usada', 0) == 1:
         return jsonify({'sucesso': False, 'erro': 'Você já usou sua roleta!'})
     
-    # Sorteio dos prêmios
+    # Sorteio dos prêmios (mesmas probabilidades)
     rand = random.random()
-    if rand < 0.80:          # 80% chance
-        premio = 20
-    elif rand < 0.95:        # 15% chance
+    if rand < 0.80:
+        premio = 30
+    elif rand < 0.95:
         premio = 50
-    elif rand < 0.99:        # 4% chance
+    elif rand < 0.99:
         premio = 100
-    else:                    # 1% chance
+    else:
         premio = 150
     
-    # Atualizar saldo do usuário (adiciona ao saldo_comissao)
+    # Atualizar saldo e marcar como usada
     for i, u in enumerate(dados['usuarios']):
         if u['id'] == session['usuario_id']:
             dados['usuarios'][i]['saldo_comissao'] += premio
@@ -539,8 +539,6 @@ def spin_wheel():
             break
     
     salvar_dados(dados)
-    
-    # Atualizar ganhos (opcional, para aparecer no resumo)
     atualizar_ganhos_usuario(session['usuario_id'], premio)
     
     return jsonify({'sucesso': True, 'premio': premio})

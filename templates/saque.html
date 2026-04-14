@@ -177,7 +177,7 @@
         <div class="card">
             <div class="regras">
                 <div class="regra-item">
-                    📌 <strong>Mínimo para saque:</strong> MZN 100
+                    📌 <strong>Mínimo para saque:</strong> MZN 200
                 </div>
                 <div class="regra-item">
                     👑 <strong>Apenas usuários:</strong> VIP1 a VIP7 podem sacar
@@ -186,7 +186,7 @@
                     ⏰ <strong>Processamento em até:</strong> 24 horas
                 </div>
                 <div class="regra-item">
-                    💰 <strong>Taxa de saque:</strong> 15% 
+                    💰 <strong>Taxa de saque:</strong> 10% 
                 </div>
             </div>
 
@@ -297,7 +297,7 @@
             let valor = parseFloat(this.value);
             if (isNaN(valor)) valor = 0;
             
-            const taxa = Math.max(valor * 0.15, 10);
+            const taxa = Math.max(valor * 0.10, 10);
             const liquido = valor - taxa;
             
             if (valor > 0) {

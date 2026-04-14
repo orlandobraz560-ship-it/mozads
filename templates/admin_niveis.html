@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Níveis VIP</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #0f3460; padding: 20px; border-radius: 15px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        input { width: 100px; padding: 5px; border-radius: 5px; border: none; }
+        button { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-voltar { background: #e94560; display: inline-block; margin-top: 20px; text-decoration: none; padding: 8px 15px; border-radius: 8px; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>✏️ Editar Níveis VIP</h2>
+    <form method="POST">
+        <table>
+            <thead>
+                <tr><th>Nível</th><th>Investimento (MZN)</th><th>Tarefas por dia</th><th>Recompensa por tarefa (MZN)</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+                {% for nivel in niveis %}
+                <tr>
+                    <td><strong>{{ nivel.nome }}</strong></td>
+                    <td>{{ nivel.investimento }}</td>
+                    <td>
+                        {% if nivel.id == 0 %}
+                            {{ nivel.tarefas_por_dia }}
+                        {% else %}
+                            <input type="number" name="tarefas_{{ nivel.id }}" value="{{ nivel.tarefas_por_dia }}" step="1" min="0">
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if nivel.id == 0 %}
+                            {{ nivel.recompensa_por_anuncio }}
+                        {% else %}
+                            <input type="number" name="recompensa_{{ nivel.id }}" value="{{ nivel.recompensa_por_anuncio }}" step="0.01" min="0">
+                        {% endif %}
+                    </td>
+                    <td>{% if nivel.id == 0 %}--{% else %}🔧{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit">💾 Salvar alterações</button>
+    </form>
+    <a href="/admin_painel" class="btn-voltar">← Voltar ao painel admin</a>
+</div>
+</body>
+</html>

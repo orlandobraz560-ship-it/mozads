@@ -392,7 +392,7 @@ def clicar_tarefa():
         dados = carregar_dados()
         usuario = get_usuario_por_id(session['usuario_id'])
 
-        # Buscar lista de links da configuração
+        # 1. Escolher link (aleatório ou sequencial)
         links = dados.get('config', {}).get('links_tarefas', ['https://omg10.com/4/10861968'])
         modo = dados.get('config', {}).get('modo_rotacao', 'aleatorio')
         if modo == 'aleatorio':
@@ -403,7 +403,7 @@ def clicar_tarefa():
             url = links[session['link_index'] % len(links)]
             session['link_index'] = session['link_index'] + 1
 
-        # Obter informações do nível do usuário
+        # 2. Dados do nível do usuário
         nivel_usuario = get_nivel_por_id(usuario['nivel'])
         if nivel_usuario:
             limite_diario = nivel_usuario['tarefas_por_dia']
@@ -412,11 +412,11 @@ def clicar_tarefa():
             limite_diario = 2
             recompensa = 0
 
-        # Verificar se é domingo
+        # 3. Verificar domingo
         if date.today().weekday() == 6:
             return jsonify({'sucesso': False, 'erro': 'Domingo não é dia de tarefas! Volte amanhã.'})
 
-        # Contar tarefas feitas hoje
+        # 4. Contar tarefas já feitas hoje
         tarefas_feitas_hoje = sum(1 for t in dados['tarefas_assistidas']
                                   if t['usuario_id'] == session['usuario_id']
                                   and t['data_assistida'].startswith(date.today().strftime('%Y-%m-%d')))
@@ -424,7 +424,7 @@ def clicar_tarefa():
         if tarefas_feitas_hoje >= limite_diario:
             return jsonify({'sucesso': False, 'erro': f'Você já atingiu o limite de {limite_diario} tarefas hoje!'})
 
-        # Registrar nova tarefa assistida
+        # 5. Registrar nova tarefa
         nova_tarefa = {
             "id": get_next_id(dados['tarefas_assistidas']),
             "usuario_id": session['usuario_id'],
@@ -434,7 +434,7 @@ def clicar_tarefa():
         }
         dados['tarefas_assistidas'].append(nova_tarefa)
 
-        # Adicionar saldo ao usuário (comissão)
+        # 6. Adicionar saldo ao usuário (saldo_comissao)
         for i, u in enumerate(dados['usuarios']):
             if u['id'] == session['usuario_id']:
                 dados['usuarios'][i]['saldo_comissao'] += recompensa
@@ -442,7 +442,7 @@ def clicar_tarefa():
 
         salvar_dados(dados)
 
-        # ATUALIZAR OS CONTADORES DE GANHOS (resumo)
+        # 7. Atualizar os contadores de ganhos (usado no painel)
         atualizar_ganhos_usuario(session['usuario_id'], recompensa)
 
         return jsonify({'sucesso': True, 'recompensa': recompensa, 'url': url})

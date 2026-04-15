@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Registros Financeiros - {{ session.usuario_nome }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .registro-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .registro-item:last-child {
+            border-bottom: none;
+        }
+        .registro-info {
+            flex: 1;
+        }
+        .registro-desc {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .registro-data {
+            font-size: 11px;
+            color: #999;
+        }
+        .registro-valor {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .valor-positivo {
+            color: #2e7d32;
+        }
+        .valor-negativo {
+            color: #f44336;
+        }
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+        .status-pendente {
+            background: #ff9800;
+            color: white;
+        }
+        .status-confirmado {
+            background: #4caf50;
+            color: white;
+        }
+        .status-pago {
+            background: #4caf50;
+            color: white;
+        }
+        .status-rejeitado {
+            background: #f44336;
+            color: white;
+        }
+        .sem-registros {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .bottom-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .bottom-item {
+            text-align: center;
+            text-decoration: none;
+            color: #999;
+            font-size: 12px;
+            padding: 8px;
+            border-radius: 10px;
+        }
+        .bottom-item.active {
+            color: #667eea;
+            background: #f0f2f5;
+        }
+        .bottom-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+        .btn-voltar {
+            background: #e94560;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Registros Financeiros</h1>
+            <p>Todo o histórico de movimentações</p>
+        </div>
+
+        <a href="/painel" class="btn-voltar">← Voltar ao Painel</a>
+
+        <div class="card">
+            {% if registros %}
+                {% for reg in registros %}
+                <div class="registro-item">
+                    <div class="registro-info">
+                        <div class="registro-desc">
+                            {{ reg.descricao }}
+                            {% if reg.status and reg.status != 'confirmado' and reg.status != 'pago' %}
+                                <span class="status status-{{ reg.status }}">{{ reg.status }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="registro-data">{{ reg.data[:16] }}</div>
+                    </div>
+                    <div class="registro-valor {% if reg.valor >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                        {% if reg.valor >= 0 %}+{% endif %}{{ "%.2f"|format(reg.valor) }} MZN
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="sem-registros">
+                    📭 Nenhuma movimentação encontrada.
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="bottom-menu">
+            <a href="/painel" class="bottom-item"><div class="bottom-icon">🏠</div><div>Lar</div></a>
+            <a href="/tarefas" class="bottom-item"><div class="bottom-icon">✅</div><div>Tarefa</div></a>
+            <a href="/vip" class="bottom-item"><div class="bottom-icon">👑</div><div>VIP</div></a>
+            <a href="/depositar" class="bottom-item"><div class="bottom-icon">📈</div><div>Investimentos</div></a>
+            <a href="/convidar" class="bottom-item"><div class="bottom-icon">👤</div><div>Meu</div></a>
+        </div>
+    </div>
+</body>
+</html>

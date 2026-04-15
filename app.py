@@ -470,6 +470,67 @@ def clicar_tarefa():
     except Exception as e:
         print(f"❌ /clicar_tarefa: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
+
+@app.route('/registros_financeiros')
+@login_obrigatorio
+def registros_financeiros():
+    dados = carregar_dados()
+    usuario_id = session['usuario_id']
+    registros = []
+
+    # 1. Depósitos (pedidos_deposito)
+    for p in dados['pedidos_deposito']:
+        if p['usuario_id'] == usuario_id:
+            registros.append({
+                'data': p['data_pedido'],
+                'tipo': 'deposito',
+                'descricao': f"Depósito de {p['valor']} MZN",
+                'valor': p['valor'],
+                'status': p['status']
+            })
+
+    # 2. Saques (pedidos_saque)
+    for p in dados['pedidos_saque']:
+        if p['usuario_id'] == usuario_id:
+            registros.append({
+                'data': p['data_pedido'],
+                'tipo': 'saque',
+                'descricao': f"Saque de {p['valor']} MZN (taxa: {p['taxa']} MZN, líquido: {p['valor_liquido']} MZN)",
+                'valor': -p['valor'],
+                'status': p['status']
+            })
+
+    # 3. Compras (produtos)
+    for c in dados['compras']:
+        if c['usuario_id'] == usuario_id:
+            produto_nome = "Produto"
+            for p in dados['produtos']:
+                if p['id'] == c['produto_id']:
+                    produto_nome = p['nome']
+                    break
+            registros.append({
+                'data': c['data_compra'],
+                'tipo': 'compra',
+                'descricao': f"Compra de {produto_nome}",
+                'valor': -c['valor'],
+                'status': 'confirmado'
+            })
+
+    # 4. Ganhos com tarefas (tarefas_assistidas)
+    for t in dados['tarefas_assistidas']:
+        if t['usuario_id'] == usuario_id:
+            registros.append({
+                'data': t['data_assistida'],
+                'tipo': 'ganho_tarefa',
+                'descricao': f"Ganho com tarefa",
+                'valor': t['ganho'],
+                'status': 'confirmado'
+            })
+
+    # Ordenar por data (mais recente primeiro)
+    registros.sort(key=lambda x: x['data'], reverse=True)
+
+    return render_template('registros_financeiros.html', registros=registros)
         
 @app.route('/tabela_rendimentos')
 @login_obrigatorio

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Informações dos Usuários - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a2e; color: white; font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: #16213e; padding: 20px; border-radius: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 10px; text-decoration: none; color: white; }
+        table { width: 100%; border-collapse: collapse; background: #0f3460; border-radius: 15px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        .status-banido { color: #f44336; font-weight: bold; }
+        .status-ativo { color: #4caf50; }
+        .btn-pequeno { background: #2196f3; padding: 4px 8px; border-radius: 5px; text-decoration: none; color: white; font-size: 12px; }
+        .btn-redefinir { background: #ff9800; }
+        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
+        .search-box input { padding: 10px; border-radius: 8px; border: none; width: 300px; }
+        .search-box button { background: #2196f3; border: none; padding: 10px 20px; border-radius: 8px; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>📋 Informações Detalhadas dos Usuários</h2>
+        <a href="/admin_painel" class="btn">← Voltar</a>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar por nome, email ou telefone..." onkeyup="filtrarTabela()">
+        <button onclick="filtrarTabela()">🔍 Buscar</button>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table id="tabelaUsuarios">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Telefone</th>
+                    <th>Nível</th>
+                    <th>Saldo Principal</th>
+                    <th>Saldo Comissão</th>
+                    <th>Total Ganho</th>
+                    <th>Total Depositado</th>
+                    <th>Tarefas Feitas</th>
+                    <th>Convidados</th>
+                    <th>Data Reg.</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.nome }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.telefone or '-' }}</td>
+                    <td>{{ u.nivel }}</td>
+                    <td>{{ "%.2f"|format(u.saldo_principal) }} MZN</td>
+                    <td>{{ "%.2f"|format(u.saldo_comissao) }} MZN</td>
+                    <td>{{ "%.2f"|format(u.total_ganhos) }} MZN</td>
+                    <td>{{ "%.2f"|format(u.total_depositado) }} MZN</td>
+                    <td>{{ u.tarefas_feitas }}</td>
+                    <td>{{ u.convidados }}</td>
+                    <td>{{ u.data_registro }}</td>
+                    <td>
+                        {% if u.banido == 1 %}
+                            <span class="status-banido">🚫 Banido</span>
+                        {% else %}
+                            <span class="status-ativo">✅ Ativo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/admin/banir_usuario/{{ u.id }}" class="btn-pequeno" onclick="return confirm('Banir usuário?')">🔨 Banir</a>
+                        <a href="/admin/desbanir_usuario/{{ u.id }}" class="btn-pequeno" onclick="return confirm('Desbanir usuário?')">✅ Desbanir</a>
+                        <a href="/redefinir_senha/{{ u.id }}" class="btn-pequeno btn-redefinir" onclick="return confirm('Redefinir senha?')">🔑 Redefinir Senha</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function filtrarTabela() {
+        let input = document.getElementById('searchInput');
+        let filter = input.value.toLowerCase();
+        let table = document.getElementById('tabelaUsuarios');
+        let rows = table.getElementsByTagName('tr');
+        for (let i = 1; i < rows.length; i++) {
+            let cells = rows[i].getElementsByTagName('td');
+            let found = false;
+            for (let j = 1; j <= 3; j++) { // busca em nome, email, telefone
+                if (cells[j] && cells[j].innerText.toLowerCase().indexOf(filter) > -1) {
+                    found = true;
+                    break;
+                }
+            }
+            rows[i].style.display = found ? '' : 'none';
+        }
+    }
+</script>
+</body>
+</html>

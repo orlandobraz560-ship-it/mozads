@@ -846,6 +846,41 @@ def admin_painel():
 
     return render_template('admin_painel.html', stats=stats, ultimos_pedidos=ultimos_pedidos)
 
+@app.route('/admin_informacoes')
+@admin_obrigatorio
+def admin_informacoes():
+    dados = carregar_dados()
+    usuarios_com_info = []
+    
+    for u in dados['usuarios']:
+        # Contar tarefas feitas pelo usuário
+        tarefas_feitas = sum(1 for t in dados['tarefas_assistidas'] if t['usuario_id'] == u['id'])
+        
+        # Calcular total movimentado (depósitos confirmados)
+        total_depositado = sum(p['valor'] for p in dados['pedidos_deposito'] 
+                              if p['usuario_id'] == u['id'] and p['status'] == 'confirmado')
+        
+        usuarios_com_info.append({
+            'id': u['id'],
+            'nome': u['nome'],
+            'email': u['email'],
+            'telefone': u.get('telefone', ''),
+            'nivel': u['nivel_nome'],
+            'saldo_principal': u['saldo_principal'],
+            'saldo_comissao': u['saldo_comissao'],
+            'total_ganhos': u.get('ganhos_total', 0),
+            'tarefas_feitas': tarefas_feitas,
+            'total_depositado': total_depositado,
+            'convidados': sum(1 for c in dados['usuarios'] if c['convidado_por'] == u['codigo_convite']),
+            'data_registro': u['data_registro'][:10],
+            'banido': u.get('banido', 0)
+        })
+    
+    # Ordenar por ID
+    usuarios_com_info.sort(key=lambda x: x['id'])
+    
+    return render_template('admin_informacoes.html', usuarios=usuarios_com_info)
+
 @app.route('/admin_depositos')
 @admin_obrigatorio
 def admin_depositos():

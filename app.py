@@ -943,6 +943,22 @@ def admin_tarefas():
 
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
+@app.route('/redefinir_senha/<int:usuario_id>')
+@admin_obrigatorio
+def redefinir_senha(usuario_id):
+    from secrets import token_hex
+    nova_senha = token_hex(4)  # ex: "a3f5b2c1"
+    nova_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+    
+    dados = carregar_dados()
+    for u in dados['usuarios']:
+        if u['id'] == usuario_id:
+            u['senha'] = nova_hash
+            salvar_dados(dados)
+            flash(f'Senha do usuário {u["nome"]} redefinida para: {nova_senha}', 'info')
+            break
+    return redirect(url_for('admin_informacoes'))
+
 @app.route('/admin_configuracoes', methods=['GET', 'POST'])
 @admin_obrigatorio
 def admin_configuracoes():

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Redefinir Senha - {{ usuario.nome }}</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: #0f3460; padding: 30px; border-radius: 15px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
+        button { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; width: 100%; }
+        .btn-voltar { background: #e94560; display: inline-block; margin-top: 20px; text-decoration: none; padding: 10px 20px; border-radius: 8px; color: white; text-align: center; }
+        .flash { padding: 10px; margin-bottom: 15px; border-radius: 8px; }
+        .sucesso { background: #4caf50; }
+        .erro { background: #f44336; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🔐 Redefinir Senha</h2>
+    <p>Usuário: <strong>{{ usuario.nome }}</strong> ({{ usuario.email }})</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+        <input type="password" name="nova_senha" placeholder="Nova senha" required>
+        <input type="password" name="confirmar_senha" placeholder="Confirmar nova senha" required>
+        <button type="submit">💾 Salvar nova senha</button>
+    </form>
+    <a href="/admin_informacoes" class="btn-voltar">← Voltar</a>
+</div>
+</body>
+</html>

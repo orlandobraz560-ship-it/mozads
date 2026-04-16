@@ -943,21 +943,37 @@ def admin_tarefas():
 
     return render_template('admin_tarefas.html', tarefas=tarefas)
 
-@app.route('/redefinir_senha/<int:usuario_id>')
+@app.route('/redefinir_senha/<int:usuario_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def redefinir_senha(usuario_id):
-    from secrets import token_hex
-    nova_senha = token_hex(4)  # ex: "a3f5b2c1"
-    nova_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+    usuario = get_usuario_por_id(usuario_id)
+    if not usuario:
+        flash('Usuário não encontrado!', 'erro')
+        return redirect(url_for('admin_informacoes'))
     
-    dados = carregar_dados()
-    for u in dados['usuarios']:
-        if u['id'] == usuario_id:
-            u['senha'] = nova_hash
-            salvar_dados(dados)
-            flash(f'Senha do usuário {u["nome"]} redefinida para: {nova_senha}', 'info')
-            break
-    return redirect(url_for('admin_informacoes'))
+    if request.method == 'POST':
+        nova_senha = request.form['nova_senha']
+        confirmar_senha = request.form['confirmar_senha']
+        
+        if nova_senha != confirmar_senha:
+            flash('As senhas não coincidem!', 'erro')
+            return redirect(url_for('redefinir_senha', usuario_id=usuario_id))
+        
+        if len(nova_senha) < 4:
+            flash('A senha deve ter pelo menos 4 caracteres!', 'erro')
+            return redirect(url_for('redefinir_senha', usuario_id=usuario_id))
+        
+        nova_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+        dados = carregar_dados()
+        for u in dados['usuarios']:
+            if u['id'] == usuario_id:
+                u['senha'] = nova_hash
+                salvar_dados(dados)
+                flash(f'Senha do usuário {usuario["nome"]} alterada com sucesso!', 'sucesso')
+                break
+        return redirect(url_for('admin_informacoes'))
+    
+    return render_template('redefinir_senha.html', usuario=usuario)
 
 @app.route('/admin_configuracoes', methods=['GET', 'POST'])
 @admin_obrigatorio

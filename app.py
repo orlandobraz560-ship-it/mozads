@@ -636,15 +636,15 @@ def saque():
         nome_titular = request.form['nome_titular']
         email_paypal = request.form.get('email_paypal', '')
 
-        if valor < 200:
-            flash('Valor mínimo para saque é 200 MZN!', 'erro')
+        if valor < 100:
+            flash('Valor mínimo para saque é 100 MZN!', 'erro')
             return redirect(url_for('saque'))
 
         if valor > saldo_total:
             flash('Saldo insuficiente!', 'erro')
             return redirect(url_for('saque'))
 
-        taxa = max(valor * 0.10, 10)   # 15% taxa, mínimo 10 MZN
+        taxa = max(valor * 0.10, 10)   # 10% taxa, mínimo 10 MZN
         valor_liquido = valor - taxa
 
         dados = carregar_dados()

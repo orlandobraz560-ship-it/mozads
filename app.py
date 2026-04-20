@@ -33,7 +33,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 DADOS_JSON = os.path.join(DATA_DIR, 'dados.json')
 
 def carregar_dados():
-    """Carrega os dados do arquivo JSON. Se não existir, cria com valores padrão."""
+    """Carrega os dados do arquivo JSON. Se não existir, cria com valores padrão.
+       Garante que as chaves 'fundos', 'investimentos' e campos de ganhos existam."""
     if not os.path.exists(DADOS_JSON):
         print("⚠️ dados.json não encontrado. Criando novo arquivo com valores padrão...")
         dados_padrao = {
@@ -114,8 +115,47 @@ def carregar_dados():
         salvar_dados(dados_padrao)
         return dados_padrao
 
+    # Arquivo existe: carrega e garante estruturas
     with open(DADOS_JSON, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        dados = json.load(f)
+
+    alterado = False
+    if 'fundos' not in dados:
+        dados['fundos'] = [
+            {
+                "id": 1,
+                "nome": "Fundo 1",
+                "valor_minimo": 5000,
+                "duracao_dias": 30,
+                "ganho_diario_percentual": 4.0,
+                "participantes_minimos": 4000,
+                "participantes_atuais": 0,
+                "ativo": True
+            }
+        ]
+        print("✅ Estrutura 'fundos' adicionada ao JSON.")
+        alterado = True
+
+    if 'investimentos' not in dados:
+        dados['investimentos'] = []
+        print("✅ Estrutura 'investimentos' adicionada ao JSON.")
+        alterado = True
+
+    # Garantir campos de ganhos nos usuários
+    for u in dados['usuarios']:
+        if 'ganhos_hoje' not in u:
+            u['ganhos_hoje'] = 0
+            u['ganhos_ontem'] = 0
+            u['ganhos_semana'] = 0
+            u['ganhos_mes'] = 0
+            u['ganhos_total'] = 0
+            alterado = True
+
+    if alterado:
+        salvar_dados(dados)
+        print("✅ JSON atualizado com novas estruturas.")
+
+    return dados
 
 def salvar_dados(dados):
     with open(DADOS_JSON, 'w', encoding='utf-8') as f:

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Fundos - Admin</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a2e; }
+        th { background: #16213e; }
+        .btn { background: #e94560; padding: 8px 16px; border-radius: 8px; text-decoration: none; color: white; display: inline-block; margin: 2px; }
+        .btn-success { background: #4caf50; }
+        .btn-warning { background: #ff9800; }
+        .btn-danger { background: #f44336; }
+        form { display: inline; }
+        input, select { padding: 8px; margin: 5px; border-radius: 5px; border: none; width: 100%; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>📈 Gerenciar Fundos de Investimento</h2>
+    <a href="/admin_painel" class="btn">← Voltar</a>
+
+    <div class="card">
+        <h3>➕ Adicionar Novo Fundo</h3>
+        <form method="POST" action="/admin/adicionar_fundo">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 15px;">
+                <div class="form-group">
+                    <label>Nome do Fundo</label>
+                    <input type="text" name="nome" required placeholder="Ex: Fundo 2">
+                </div>
+                <div class="form-group">
+                    <label>Valor Mínimo (MZN)</label>
+                    <input type="number" name="valor_minimo" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Duração (dias)</label>
+                    <input type="number" name="duracao_dias" required>
+                </div>
+                <div class="form-group">
+                    <label>Ganho Diário (%)</label>
+                    <input type="number" name="ganho_diario_percentual" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Participantes Mínimos</label>
+                    <input type="number" name="participantes_minimos" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">➕ Adicionar Fundo</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>📋 Fundos Existentes</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Nome</th><th>Valor Mínimo</th><th>Duração (dias)</th><th>Ganho Diário (%)</th><th>Part. Mínimos</th><th>Part. Atuais</th><th>Status</th><th>Ações</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in fundos %}
+                    <tr>
+                        <td>{{ f.id }}</td>
+                        <td>{{ f.nome }}</td>
+                        <td>{{ f.valor_minimo }} MZN</td>
+                        <td>{{ f.duracao_dias }}</td>
+                        <td>{{ f.ganho_diario_percentual }}%</td>
+                        <td>{{ f.participantes_minimos }}</td>
+                        <td>{{ f.participantes_atuais }}</td>
+                        <td>{% if f.ativo %}✅ Ativo{% else %}❌ Inativo{% endif %}</td>
+                        <td>
+                            <a href="/editar_fundo/{{ f.id }}" class="btn btn-warning">✏️ Editar</a>
+                            <a href="/remover_fundo/{{ f.id }}" class="btn btn-danger" onclick="return confirm('Remover fundo?')">❌ Remover</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

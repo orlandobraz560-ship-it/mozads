@@ -1692,7 +1692,7 @@ def admin_adicionar_fundo():
     flash(f'✅ Fundo "{novo_fundo["nome"]}" adicionado com sucesso!', 'sucesso')
     return redirect(url_for('admin_fundos'))
 
-@app.route('/editar_fundo/<int:fundo_id>', methods=['GET', 'POST'])
+@app.route('/admin_editar_fundo/<int:fundo_id>', methods=['GET', 'POST'])
 @admin_obrigatorio
 def admin_editar_fundo(fundo_id):
     dados = carregar_dados()

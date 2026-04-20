@@ -55,6 +55,19 @@ def carregar_dados():
                     "data_registro": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
             ],
+            "fundos": [
+    {
+        "id": 1,
+        "nome": "Fundo 1",
+        "valor_minimo": 5000,
+        "duracao_dias": 30,
+        "ganho_diario_percentual": 4.0,
+        "participantes_minimos": 4000,
+        "participantes_atuais": 0,
+        "ativo": True
+    }
+],
+"investimentos": []
             "niveis": [
                 {"id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 2, "recompensa_por_anuncio": 0, "duracao_dias": 180},
                 {"id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180},
@@ -104,6 +117,54 @@ def salvar_dados(dados):
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
 # ==================== FUNÇÕES AUXILIARES ====================
+def atualizar_investimentos(usuario_id=None):
+    """Atualiza os ganhos diários dos investimentos ativos e finaliza os concluídos."""
+    dados = carregar_dados()
+    hoje = date.today()
+    alterado = False
+    
+    for inv in dados['investimentos']:
+        if usuario_id and inv['usuario_id'] != usuario_id:
+            continue
+        if inv['status'] != 'ativo':
+            continue
+        
+        data_fim = datetime.strptime(inv['data_fim'], '%Y-%m-%d').date()
+        data_inicio = datetime.strptime(inv['data_inicio'], '%Y-%m-%d').date()
+        
+        # Se já passou da data de fim, finaliza e credita
+        if hoje >= data_fim:
+            # Buscar fundo para saber percentual
+            fundo = next((f for f in dados['fundos'] if f['id'] == inv['fundo_id']), None)
+            if fundo:
+                # Calcula ganhos totais (diários) - se ainda não foram acumulados integralmente
+                dias_totais = (data_fim - data_inicio).days
+                ganho_por_dia = inv['valor_investido'] * (fundo['ganho_diario_percentual'] / 100)
+                ganho_total = ganho_por_dia * dias_totais
+                # Credita no usuário
+                for u in dados['usuarios']:
+                    if u['id'] == inv['usuario_id']:
+                        u['saldo_principal'] += inv['valor_investido'] + ganho_total
+                        break
+                inv['status'] = 'concluido'
+                inv['ganhos_acumulados'] = ganho_total
+                alterado = True
+        else:
+            # Calcula quantos dias já se passaram desde o último update (simplificado)
+            # Vamos recalcular do início para evitar complexidade
+            dias_passados = (hoje - data_inicio).days
+            if dias_passados < 0:
+                continue
+            # Ganho diário
+            fundo = next((f for f in dados['fundos'] if f['id'] == inv['fundo_id']), None)
+            if fundo:
+                ganho_por_dia = inv['valor_investido'] * (fundo['ganho_diario_percentual'] / 100)
+                ganho_esperado = ganho_por_dia * dias_passados
+                if ganho_esperado > inv['ganhos_acumulados']:
+                    inv['ganhos_acumulados'] = ganho_esperado
+                    alterado = True
+    if alterado:
+        salvar_dados(dados)
 
 def atualizar_ganhos_usuario(usuario_id, valor):
     """Soma os ganhos ao usuário (chamada a cada tarefa/comissão)"""
@@ -470,6 +531,78 @@ def clicar_tarefa():
     except Exception as e:
         print(f"❌ /clicar_tarefa: {str(e)}")
         return jsonify({'sucesso': False, 'erro': str(e)})
+
+@app.route('/fundos')
+@login_obrigatorio
+def fundos():
+    dados = carregar_dados()
+    # Atualiza investimentos do usuário
+    atualizar_investimentos(session['usuario_id'])
+    usuario = get_usuario_por_id(session['usuario_id'])
+    fundos_disponiveis = [f for f in dados['fundos'] if f['ativo']]
+    investimentos_usuario = [inv for inv in dados['investimentos'] if inv['usuario_id'] == session['usuario_id']]
+    
+    return render_template('fundos.html', fundos=fundos_disponiveis, investimentos=investimentos_usuario, usuario=usuario)
+
+@app.route('/investir_fundo/<int:fundo_id>', methods=['POST'])
+@login_obrigatorio
+def investir_fundo(fundo_id):
+    dados = carregar_dados()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    fundo = next((f for f in dados['fundos'] if f['id'] == fundo_id), None)
+    if not fundo:
+        flash('Fundo não encontrado!', 'erro')
+        return redirect(url_for('fundos'))
+    
+    valor = float(request.form['valor'])
+    if valor < fundo['valor_minimo']:
+        flash(f'Valor mínimo para este fundo é {fundo["valor_minimo"]} MZN', 'erro')
+        return redirect(url_for('fundos'))
+    
+    saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
+    if saldo_total < valor:
+        flash('Saldo insuficiente!', 'erro')
+        return redirect(url_for('fundos'))
+    
+    # Debitar do saldo (prioridade: principal, depois comissão)
+    if usuario['saldo_principal'] >= valor:
+        novo_saldo_principal = usuario['saldo_principal'] - valor
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == session['usuario_id']:
+                dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
+                break
+    else:
+        restante = valor - usuario['saldo_principal']
+        for i, u in enumerate(dados['usuarios']):
+            if u['id'] == session['usuario_id']:
+                dados['usuarios'][i]['saldo_principal'] = 0
+                dados['usuarios'][i]['saldo_comissao'] -= restante
+                break
+    
+    # Criar investimento
+    hoje = date.today()
+    data_fim = hoje + timedelta(days=fundo['duracao_dias'])
+    novo_investimento = {
+        "id": get_next_id(dados['investimentos']),
+        "usuario_id": session['usuario_id'],
+        "fundo_id": fundo_id,
+        "valor_investido": valor,
+        "data_inicio": hoje.strftime('%Y-%m-%d'),
+        "data_fim": data_fim.strftime('%Y-%m-%d'),
+        "ganhos_acumulados": 0,
+        "status": "ativo"
+    }
+    dados['investimentos'].append(novo_investimento)
+    
+    # Atualizar contador de participantes (se necessário)
+    for f in dados['fundos']:
+        if f['id'] == fundo_id:
+            f['participantes_atuais'] += 1
+            break
+    
+    salvar_dados(dados)
+    flash(f'Investimento de {valor} MZN no {fundo["nome"]} realizado com sucesso!', 'sucesso')
+    return redirect(url_for('fundos'))
 
 @app.route('/registros_financeiros')
 @login_obrigatorio

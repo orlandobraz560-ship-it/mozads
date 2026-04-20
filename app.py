@@ -594,27 +594,49 @@ def fundos():
 def investir_fundo(fundo_id):
     dados = carregar_dados()
     usuario = get_usuario_por_id(session['usuario_id'])
-    fundo = next((f for f in dados['fundos'] if f['id'] == fundo_id), None)
+    fundo = next((f for f in dados.get('fundos', []) if f['id'] == fundo_id), None)
+
     if not fundo:
         flash('Fundo não encontrado!', 'erro')
         return redirect(url_for('fundos'))
-    
-    valor = float(request.form['valor'])
+
+    # Verificar se o fundo está ativo
+    if not fundo.get('ativo', True):
+        flash('Este fundo não está ativo no momento.', 'erro')
+        return redirect(url_for('fundos'))
+
+    # Verificar se o fundo já atingiu o número mínimo de participantes
+    participantes_atuais = fundo.get('participantes_atuais', 0)
+    if participantes_atuais >= fundo['participantes_minimos']:
+        flash(f'Este fundo já atingiu o número mínimo de {fundo["participantes_minimos"]} participantes e não aceita mais investimentos.', 'erro')
+        return redirect(url_for('fundos'))
+
+    # Verificar se o usuário já possui um investimento ativo neste fundo
+    for inv in dados.get('investimentos', []):
+        if inv['usuario_id'] == session['usuario_id'] and inv['fundo_id'] == fundo_id and inv.get('status') == 'ativo':
+            flash('Você já possui um investimento ativo neste fundo. Aguarde a conclusão para investir novamente.', 'erro')
+            return redirect(url_for('fundos'))
+
+    try:
+        valor = float(request.form['valor'])
+    except (ValueError, KeyError):
+        flash('Valor inválido!', 'erro')
+        return redirect(url_for('fundos'))
+
     if valor < fundo['valor_minimo']:
         flash(f'Valor mínimo para este fundo é {fundo["valor_minimo"]} MZN', 'erro')
         return redirect(url_for('fundos'))
-    
+
     saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
     if saldo_total < valor:
         flash('Saldo insuficiente!', 'erro')
         return redirect(url_for('fundos'))
-    
-    # Debitar do saldo (prioridade: principal, depois comissão)
+
+    # Debita do saldo (prioridade: principal, depois comissão)
     if usuario['saldo_principal'] >= valor:
-        novo_saldo_principal = usuario['saldo_principal'] - valor
         for i, u in enumerate(dados['usuarios']):
             if u['id'] == session['usuario_id']:
-                dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
+                dados['usuarios'][i]['saldo_principal'] -= valor
                 break
     else:
         restante = valor - usuario['saldo_principal']
@@ -623,12 +645,12 @@ def investir_fundo(fundo_id):
                 dados['usuarios'][i]['saldo_principal'] = 0
                 dados['usuarios'][i]['saldo_comissao'] -= restante
                 break
-    
+
     # Criar investimento
     hoje = date.today()
     data_fim = hoje + timedelta(days=fundo['duracao_dias'])
     novo_investimento = {
-        "id": get_next_id(dados['investimentos']),
+        "id": get_next_id(dados.get('investimentos', [])),
         "usuario_id": session['usuario_id'],
         "fundo_id": fundo_id,
         "valor_investido": valor,
@@ -637,14 +659,14 @@ def investir_fundo(fundo_id):
         "ganhos_acumulados": 0,
         "status": "ativo"
     }
-    dados['investimentos'].append(novo_investimento)
-    
-    # Atualizar contador de participantes (se necessário)
+    dados.setdefault('investimentos', []).append(novo_investimento)
+
+    # Incrementar contador de participantes do fundo
     for f in dados['fundos']:
         if f['id'] == fundo_id:
-            f['participantes_atuais'] += 1
+            f['participantes_atuais'] = f.get('participantes_atuais', 0) + 1
             break
-    
+
     salvar_dados(dados)
     flash(f'Investimento de {valor} MZN no {fundo["nome"]} realizado com sucesso!', 'sucesso')
     return redirect(url_for('fundos'))

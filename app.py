@@ -51,23 +51,28 @@ def carregar_dados():
                     "saldo_principal": 0,
                     "saldo_comissao": 0,
                     "roleta_usada": 0,
+                    "ganhos_hoje": 0,
+                    "ganhos_ontem": 0,
+                    "ganhos_semana": 0,
+                    "ganhos_mes": 0,
+                    "ganhos_total": 0,
                     "is_admin": 1,
                     "data_registro": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
             ],
             "fundos": [
-    {
-        "id": 1,
-        "nome": "Fundo 1",
-        "valor_minimo": 5000,
-        "duracao_dias": 30,
-        "ganho_diario_percentual": 4.0,
-        "participantes_minimos": 4000,
-        "participantes_atuais": 0,
-        "ativo": True
-    }
-],
-"investimentos": []
+                {
+                    "id": 1,
+                    "nome": "Fundo 1",
+                    "valor_minimo": 5000,
+                    "duracao_dias": 30,
+                    "ganho_diario_percentual": 4.0,
+                    "participantes_minimos": 4000,
+                    "participantes_atuais": 0,
+                    "ativo": True
+                }
+            ],
+            "investimentos": [],
             "niveis": [
                 {"id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 2, "recompensa_por_anuncio": 0, "duracao_dias": 180},
                 {"id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180},

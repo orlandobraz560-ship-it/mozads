@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Fundos de Investimento - MOZ ADS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f0f2f5; font-family: Arial; padding: 20px; padding-bottom: 80px; }
+        .container { max-width: 600px; margin: auto; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .saldo { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; text-align: center; }
+        .fundo { border-left: 5px solid #667eea; }
+        .btn-investir { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn-voltar { background: #e94560; display: inline-block; padding: 8px 16px; border-radius: 8px; text-decoration: none; color: white; margin-bottom: 20px; }
+        .investimento { background: #e8f5e9; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="/painel" class="btn-voltar">← Voltar</a>
+    
+    <div class="card saldo">
+        <h3>💰 Seu Saldo</h3>
+        <p>Principal: {{ "%.2f"|format(usuario.saldo_principal) }} MZN</p>
+        <p>Comissão: {{ "%.2f"|format(usuario.saldo_comissao) }} MZN</p>
+        <p><strong>Total disponível: {{ "%.2f"|format(usuario.saldo_principal + usuario.saldo_comissao) }} MZN</strong></p>
+    </div>
+
+    <h2>📈 Fundos Disponíveis</h2>
+    {% for fundo in fundos %}
+    <div class="card fundo">
+        <h3>{{ fundo.nome }}</h3>
+        <p>💵 Valor mínimo: {{ fundo.valor_minimo }} MZN</p>
+        <p>⏱️ Duração: {{ fundo.duracao_dias }} dias</p>
+        <p>📈 Ganho diário: {{ fundo.ganho_diario_percentual }}%</p>
+        <p>👥 Participantes: {{ fundo.participantes_atuais }}/{{ fundo.participantes_minimos }}</p>
+        <form method="POST" action="/investir_fundo/{{ fundo.id }}">
+            <input type="number" name="valor" placeholder="Valor (mínimo {{ fundo.valor_minimo }})" step="0.01" required>
+            <button type="submit" class="btn-investir">💎 Investir</button>
+        </form>
+    </div>
+    {% endfor %}
+
+    <h2>📋 Meus Investimentos</h2>
+    {% for inv in investimentos %}
+    <div class="card investimento">
+        <p><strong>Fundo {{ inv.fundo_id }}</strong></p>
+        <p>💰 Valor investido: {{ inv.valor_investido }} MZN</p>
+        <p>📅 Início: {{ inv.data_inicio }}</p>
+        <p>📅 Fim: {{ inv.data_fim }}</p>
+        <p>📈 Ganhos acumulados: {{ "%.2f"|format(inv.ganhos_acumulados) }} MZN</p>
+        <p>Status: {% if inv.status == 'ativo' %}🟢 Ativo{% else %}✅ Concluído{% endif %}</p>
+    </div>
+    {% else %}
+    <p>Nenhum investimento ativo.</p>
+    {% endfor %}
+</div>
+</body>
+</html>

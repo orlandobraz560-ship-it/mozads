@@ -1663,6 +1663,67 @@ def configurar_link_rapido():
     flash(f'✅ Link do VIP {nivel_id} configurado!', 'sucesso')
     return redirect(url_for('admin_tarefas'))
 
+# ==================== ADMIN - GERENCIAR FUNDOS ====================
+
+@app.route('/admin_fundos')
+@admin_obrigatorio
+def admin_fundos():
+    dados = carregar_dados()
+    fundos = dados.get('fundos', [])
+    return render_template('admin_fundos.html', fundos=fundos)
+
+@app.route('/adicionar_fundo', methods=['POST'])
+@admin_obrigatorio
+def admin_adicionar_fundo():
+    dados = carregar_dados()
+    novo_id = get_next_id(dados.get('fundos', []))
+    novo_fundo = {
+        "id": novo_id,
+        "nome": request.form['nome'],
+        "valor_minimo": float(request.form['valor_minimo']),
+        "duracao_dias": int(request.form['duracao_dias']),
+        "ganho_diario_percentual": float(request.form['ganho_diario_percentual']),
+        "participantes_minimos": int(request.form['participantes_minimos']),
+        "participantes_atuais": 0,
+        "ativo": True
+    }
+    dados.setdefault('fundos', []).append(novo_fundo)
+    salvar_dados(dados)
+    flash(f'✅ Fundo "{novo_fundo["nome"]}" adicionado com sucesso!', 'sucesso')
+    return redirect(url_for('admin_fundos'))
+
+@app.route('/editar_fundo/<int:fundo_id>', methods=['GET', 'POST'])
+@admin_obrigatorio
+def admin_editar_fundo(fundo_id):
+    dados = carregar_dados()
+    fundo = next((f for f in dados.get('fundos', []) if f['id'] == fundo_id), None)
+    if not fundo:
+        flash('Fundo não encontrado!', 'erro')
+        return redirect(url_for('admin_fundos'))
+
+    if request.method == 'POST':
+        fundo['nome'] = request.form['nome']
+        fundo['valor_minimo'] = float(request.form['valor_minimo'])
+        fundo['duracao_dias'] = int(request.form['duracao_dias'])
+        fundo['ganho_diario_percentual'] = float(request.form['ganho_diario_percentual'])
+        fundo['participantes_minimos'] = int(request.form['participantes_minimos'])
+        fundo['ativo'] = 'ativo' in request.form
+        salvar_dados(dados)
+        flash(f'✅ Fundo "{fundo["nome"]}" atualizado!', 'sucesso')
+        return redirect(url_for('admin_fundos'))
+
+    return render_template('admin_editar_fundo.html', fundo=fundo)
+
+@app.route('/remover_fundo/<int:fundo_id>')
+@admin_obrigatorio
+def admin_remover_fundo(fundo_id):
+    dados = carregar_dados()
+    fundos = dados.get('fundos', [])
+    dados['fundos'] = [f for f in fundos if f['id'] != fundo_id]
+    salvar_dados(dados)
+    flash('❌ Fundo removido!', 'erro')
+    return redirect(url_for('admin_fundos'))
+
 # ==================== INICIALIZAÇÃO ====================
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 5000))

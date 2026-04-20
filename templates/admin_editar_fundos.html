@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Fundo - {{ fundo.nome }}</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #0f3460; border-radius: 15px; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; border-radius: 5px; border: none; }
+        .btn { background: #4caf50; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; }
+        .btn-voltar { background: #e94560; display: inline-block; margin-top: 20px; text-decoration: none; padding: 8px 16px; border-radius: 8px; color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>✏️ Editar Fundo: {{ fundo.nome }}</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Nome do Fundo</label>
+            <input type="text" name="nome" value="{{ fundo.nome }}" required>
+        </div>
+        <div class="form-group">
+            <label>Valor Mínimo (MZN)</label>
+            <input type="number" name="valor_minimo" value="{{ fundo.valor_minimo }}" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label>Duração (dias)</label>
+            <input type="number" name="duracao_dias" value="{{ fundo.duracao_dias }}" required>
+        </div>
+        <div class="form-group">
+            <label>Ganho Diário (%)</label>
+            <input type="number" name="ganho_diario_percentual" value="{{ fundo.ganho_diario_percentual }}" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label>Participantes Mínimos</label>
+            <input type="number" name="participantes_minimos" value="{{ fundo.participantes_minimos }}" required>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="ativo" {% if fundo.ativo %}checked{% endif %}> Fundo Ativo
+            </label>
+        </div>
+        <button type="submit" class="btn">💾 Salvar Alterações</button>
+    </form>
+    <a href="/admin_fundos" class="btn-voltar">← Voltar</a>
+</div>
+</body>
+</html>

@@ -73,7 +73,7 @@
                         <td>{{ f.participantes_atuais }}</td>
                         <td>{% if f.ativo %}✅ Ativo{% else %}❌ Inativo{% endif %}</td>
                         <td>
-                            <a href="/editar_fundo/{{ f.id }}" class="btn btn-warning">✏️ Editar</a>
+                            <a href="/admin_editar_fundo/{{ f.id }}" class="btn btn-warning">✏️ Editar</a>
                             <a href="/remover_fundo/{{ f.id }}" class="btn btn-danger" onclick="return confirm('Remover fundo?')">❌ Remover</a>
                         </td>
                     </tr>

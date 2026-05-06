@@ -161,6 +161,30 @@ def salvar_dados(dados):
     with open(DADOS_JSON, 'w', encoding='utf-8') as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
+
+
+# ========== MIGRAÇÃO: ATUALIZAR NÍVEIS ==========
+niveis_corretos = {
+    0: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 3},
+    1: {"tarefas_por_dia": 5, "recompensa_por_anuncio": 4},
+    2: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 10},
+    3: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 40},
+    4: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 100},
+    5: {"tarefas_por_dia": 20, "recompensa_por_anuncio": 100},
+    6: {"tarefas_por_dia": 20, "recompensa_por_anuncio": 500},
+    7: {"tarefas_por_dia": 20, "recompensa_por_anuncio": 1500}
+}
+for nivel in dados['niveis']:
+    nid = nivel['id']
+    if nid in niveis_corretos:
+        if nivel.get('tarefas_por_dia') != niveis_corretos[nid]['tarefas_por_dia']:
+            nivel['tarefas_por_dia'] = niveis_corretos[nid]['tarefas_por_dia']
+            alterado = True
+        if nivel.get('recompensa_por_anuncio') != niveis_corretos[nid]['recompensa_por_anuncio']:
+            nivel['recompensa_por_anuncio'] = niveis_corretos[nid]['recompensa_por_anuncio']
+            alterado = True
+            
+
 # ==================== FUNÇÕES AUXILIARES ====================
 def atualizar_investimentos(usuario_id=None):
     """Atualiza os ganhos diários dos investimentos ativos e finaliza os concluídos."""

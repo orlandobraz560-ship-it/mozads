@@ -76,7 +76,7 @@ def carregar_dados():
             "investimentos": [],
             "niveis": [
                 {"id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 10, "recompensa_por_anuncio": 3, "duracao_dias": 180},
-                {"id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180},
+                {"id": 1, "nome": "VIP 1", "investimento": 1500, "tarefas_por_dia": 10, "recompensa_por_anuncio": 5, "duracao_dias": 180},
                 {"id": 2, "nome": "VIP 2", "investimento": 3000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 10, "duracao_dias": 180},
                 {"id": 3, "nome": "VIP 3", "investimento": 12000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 40, "duracao_dias": 180},
                 {"id": 4, "nome": "VIP 4", "investimento": 30000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 100, "duracao_dias": 180},

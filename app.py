@@ -155,7 +155,7 @@ def carregar_dados():
     # ========== MIGRAÇÃO: ATUALIZAR NÍVEIS ==========
     niveis_corretos = {
         0: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 3},
-        1: {"tarefas_por_dia": 5, "recompensa_por_anuncio": 4},
+        1: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 5},
         2: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 10},
         3: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 40},
         4: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 100},

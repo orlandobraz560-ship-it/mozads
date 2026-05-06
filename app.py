@@ -494,6 +494,55 @@ def vip():
     usuario = get_usuario_por_id(session['usuario_id'])
     niveis = dados['niveis']   # contém todos, inclusive id=0
     # ...
+
+    if request.method == 'POST':
+        novo_nivel_id = int(request.form['nivel_id'])
+        novo_nivel = get_nivel_por_id(novo_nivel_id)
+
+        if novo_nivel:
+            valor_novo_vip = novo_nivel['investimento']
+            saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
+            nivel_atual = usuario['nivel']
+
+            if novo_nivel_id > nivel_atual:
+                if saldo_total >= valor_novo_vip:
+                    # Cobrar o valor
+                    novo_saldo_principal = usuario['saldo_principal'] - min(usuario['saldo_principal'], valor_novo_vip)
+                    restante = valor_novo_vip - min(usuario['saldo_principal'], valor_novo_vip)
+                    novo_saldo_comissao = usuario['saldo_comissao'] - restante
+
+
+                    # Comissão de 15% para quem convidou
+                    if usuario['convidado_por']:
+                       comissao = valor_novo_vip * 0.15
+                       convidante = get_usuario_por_codigo(usuario['convidado_por'])
+                       if convidante:
+                           for i, u in enumerate(dados['usuarios']):
+                               if u['id'] == convidante['id']:
+                                   dados['usuarios'][i]['saldo_comissao'] += comissao
+                                   atualizar_ganhos_usuario(convidante['id'], comissao)
+                                   break  
+
+
+                    # Atualizar usuário
+                    for i, u in enumerate(dados['usuarios']):
+                        if u['id'] == session['usuario_id']:
+                            dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
+                            dados['usuarios'][i]['saldo_comissao'] = novo_saldo_comissao
+                            dados['usuarios'][i]['nivel'] = novo_nivel_id
+                            dados['usuarios'][i]['nivel_nome'] = novo_nivel['nome']
+                            break
+
+                    salvar_dados(dados)
+                    flash(f'✅ Parabéns! Você fez upgrade para {novo_nivel["nome"]}!', 'sucesso')
+                else:
+                    falta = valor_novo_vip - saldo_total
+                    flash(f'❌ Saldo insuficiente! Você precisa de {falta:.2f} MZN para fazer upgrade.', 'erro')
+            else:
+                flash(f'❌ Você já possui um nível igual ou superior!', 'erro')
+
+        return redirect(url_for('vip'))
+
     return render_template('vip.html', usuario=usuario, niveis=niveis)
 
 @app.route('/tarefas')
@@ -915,62 +964,6 @@ def convidar():
     convidados = [u for u in dados['usuarios'] if u['convidado_por'] == usuario['codigo_convite']]
     return render_template('convidar.html', usuario=usuario, convidados=convidados, total_convidados=len(convidados))
 
-@app.route('/vip', methods=['GET', 'POST'])
-@login_obrigatorio
-def vip():
-    usuario = get_usuario_por_id(session['usuario_id'])
-    dados = carregar_dados()
-    niveis = [n for n in dados['niveis'] if n['id'] > 0]
-
-    if request.method == 'POST':
-        novo_nivel_id = int(request.form['nivel_id'])
-        novo_nivel = get_nivel_por_id(novo_nivel_id)
-
-        if novo_nivel:
-            valor_novo_vip = novo_nivel['investimento']
-            saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
-            nivel_atual = usuario['nivel']
-
-            if novo_nivel_id > nivel_atual:
-                if saldo_total >= valor_novo_vip:
-                    # Cobrar o valor
-                    novo_saldo_principal = usuario['saldo_principal'] - min(usuario['saldo_principal'], valor_novo_vip)
-                    restante = valor_novo_vip - min(usuario['saldo_principal'], valor_novo_vip)
-                    novo_saldo_comissao = usuario['saldo_comissao'] - restante
-
-
-                    # Comissão de 15% para quem convidou
-                    if usuario['convidado_por']:
-                       comissao = valor_novo_vip * 0.15
-                       convidante = get_usuario_por_codigo(usuario['convidado_por'])
-                       if convidante:
-                           for i, u in enumerate(dados['usuarios']):
-                               if u['id'] == convidante['id']:
-                                   dados['usuarios'][i]['saldo_comissao'] += comissao
-                                   atualizar_ganhos_usuario(convidante['id'], comissao)
-                                   break  
-
-
-                    # Atualizar usuário
-                    for i, u in enumerate(dados['usuarios']):
-                        if u['id'] == session['usuario_id']:
-                            dados['usuarios'][i]['saldo_principal'] = novo_saldo_principal
-                            dados['usuarios'][i]['saldo_comissao'] = novo_saldo_comissao
-                            dados['usuarios'][i]['nivel'] = novo_nivel_id
-                            dados['usuarios'][i]['nivel_nome'] = novo_nivel['nome']
-                            break
-
-                    salvar_dados(dados)
-                    flash(f'✅ Parabéns! Você fez upgrade para {novo_nivel["nome"]}!', 'sucesso')
-                else:
-                    falta = valor_novo_vip - saldo_total
-                    flash(f'❌ Saldo insuficiente! Você precisa de {falta:.2f} MZN para fazer upgrade.', 'erro')
-            else:
-                flash(f'❌ Você já possui um nível igual ou superior!', 'erro')
-
-        return redirect(url_for('vip'))
-
-    return render_template('vip.html', usuario=usuario, niveis=niveis)
 
 # ==================== SHOP ====================
 

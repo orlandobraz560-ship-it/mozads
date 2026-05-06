@@ -34,7 +34,7 @@ DADOS_JSON = os.path.join(DATA_DIR, 'dados.json')
 
 def carregar_dados():
     """Carrega os dados do arquivo JSON. Se não existir, cria com valores padrão.
-       Garante que as chaves 'fundos', 'investimentos' e campos de ganhos existam."""
+       Garante que as chaves 'fundos', 'investimentos', 'popup' e campos de ganhos existam."""
     if not os.path.exists(DADOS_JSON):
         print("⚠️ dados.json não encontrado. Criando novo arquivo com valores padrão...")
         dados_padrao = {
@@ -74,9 +74,18 @@ def carregar_dados():
                 }
             ],
             "investimentos": [],
+            "popup": {
+                "ativo": False,
+                "titulo": "Bem-vindo ao MOZ ADS!",
+                "mensagem": "Aproveite as tarefas diárias e ganhe dinheiro.",
+                "imagem_url": "",
+                "link_url": "",
+                "tipo_exibicao": "sessao",
+                "data_expiracao": ""
+            },
             "niveis": [
                 {"id": 0, "nome": "Estagiário", "investimento": 0, "tarefas_por_dia": 10, "recompensa_por_anuncio": 3, "duracao_dias": 180},
-                {"id": 1, "nome": "VIP 1", "investimento": 1500, "tarefas_por_dia": 10, "recompensa_por_anuncio": 5, "duracao_dias": 180},
+                {"id": 1, "nome": "VIP 1", "investimento": 600, "tarefas_por_dia": 5, "recompensa_por_anuncio": 4, "duracao_dias": 180},
                 {"id": 2, "nome": "VIP 2", "investimento": 3000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 10, "duracao_dias": 180},
                 {"id": 3, "nome": "VIP 3", "investimento": 12000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 40, "duracao_dias": 180},
                 {"id": 4, "nome": "VIP 4", "investimento": 30000, "tarefas_por_dia": 10, "recompensa_por_anuncio": 100, "duracao_dias": 180},
@@ -121,6 +130,7 @@ def carregar_dados():
 
     alterado = False
 
+    # Garantir 'fundos'
     if 'fundos' not in dados:
         dados['fundos'] = [
             {
@@ -137,9 +147,24 @@ def carregar_dados():
         print("✅ Estrutura 'fundos' adicionada ao JSON.")
         alterado = True
 
+    # Garantir 'investimentos'
     if 'investimentos' not in dados:
         dados['investimentos'] = []
         print("✅ Estrutura 'investimentos' adicionada ao JSON.")
+        alterado = True
+
+    # Garantir 'popup'
+    if 'popup' not in dados:
+        dados['popup'] = {
+            "ativo": False,
+            "titulo": "Bem-vindo ao MOZ ADS!",
+            "mensagem": "Aproveite as tarefas diárias e ganhe dinheiro.",
+            "imagem_url": "",
+            "link_url": "",
+            "tipo_exibicao": "sessao",
+            "data_expiracao": ""
+        }
+        print("✅ Estrutura 'popup' adicionada ao JSON.")
         alterado = True
 
     # Garantir campos de ganhos nos usuários
@@ -476,6 +501,22 @@ def painel():
                            ganhos_semana=ganhos_semana,
                            ganhos_mes=ganhos_mes,
                            ganhos_total=ganhos_total)
+
+@app.route('/api/popup')
+@login_obrigatorio
+def api_popup():
+    dados = carregar_dados()
+    popup = dados.get('popup', {})
+    # Não retorna dados sensíveis, apenas o necessário para exibição
+    return jsonify({
+        'ativo': popup.get('ativo', False),
+        'titulo': popup.get('titulo', ''),
+        'mensagem': popup.get('mensagem', ''),
+        'imagem_url': popup.get('imagem_url', ''),
+        'link_url': popup.get('link_url', ''),
+        'tipo_exibicao': popup.get('tipo_exibicao', 'sessao'),
+        'data_expiracao': popup.get('data_expiracao', '')
+    })
 
 @app.route('/api/saldo')
 @login_obrigatorio
@@ -1775,6 +1816,25 @@ def admin_remover_fundo(fundo_id):
     salvar_dados(dados)
     flash('❌ Fundo removido!', 'erro')
     return redirect(url_for('admin_fundos'))
+
+@app.route('/admin_popup', methods=['GET', 'POST'])
+@admin_obrigatorio
+def admin_popup():
+    dados = carregar_dados()
+    popup = dados.get('popup', {})
+    if request.method == 'POST':
+        popup['ativo'] = 'ativo' in request.form
+        popup['titulo'] = request.form.get('titulo', '')
+        popup['mensagem'] = request.form.get('mensagem', '')
+        popup['imagem_url'] = request.form.get('imagem_url', '')
+        popup['link_url'] = request.form.get('link_url', '')
+        popup['tipo_exibicao'] = request.form.get('tipo_exibicao', 'sessao')
+        popup['data_expiracao'] = request.form.get('data_expiracao', '')
+        dados['popup'] = popup
+        salvar_dados(dados)
+        flash('✅ Configuração do pop-up salva!', 'sucesso')
+        return redirect(url_for('admin_popup'))
+    return render_template('admin_popup.html', popup=popup)
 
 # ==================== INICIALIZAÇÃO ====================
 if __name__ == '__main__':

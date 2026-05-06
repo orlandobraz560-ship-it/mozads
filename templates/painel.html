@@ -36,6 +36,56 @@
         .sucesso { background: #d4edda; color: #155724; }
         .erro { background: #f8d7da; color: #721c24; }
         hr { margin: 15px 0; border: none; border-top: 1px solid #eee; }
+
+        /* Estilos do pop-up */
+        .popup-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .popup-content {
+            background: white;
+            max-width: 400px;
+            width: 90%;
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            position: relative;
+            animation: fadeIn 0.3s;
+        }
+        .popup-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .popup-img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .popup-link {
+            display: inline-block;
+            margin-top: 15px;
+            background: #2196f3;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            text-decoration: none;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
@@ -86,7 +136,7 @@
                 <a href="/tabela_rendimentos" class="menu-item"><div class="menu-icon">📊</div><div class="menu-label">Rendimentos</div></a>
                 <a href="/tarefas" class="menu-item"><div class="menu-icon">✅</div><div class="menu-label">Tarefa</div></a>
                 <a href="/vip" class="menu-item"><div class="menu-icon">👑</div><div class="menu-label">VIP</div></a>
-                <a href="/convidar" class="menu-item" onclick="alert('Equipe em desenvolvimento')"><div class="menu-icon">👥</div><div class="menu-label">Equipe</div></a>
+                <a href="/convidar" class="menu-item"><div class="menu-icon">👥</div><div class="menu-label">Equipe</div></a>
                 <a href="/convidar" class="menu-item"><div class="menu-icon">🔗</div><div class="menu-label">Convidar</div></a>
                 <a href="#" class="menu-item" onclick="alert('Perfil em desenvolvimento')"><div class="menu-icon">👤</div><div class="menu-label">Perfil</div></a>
                 <a href="/roleta" class="menu-item"><div class="menu-icon">🎡</div><div class="menu-label">Roleta</div></a>
@@ -138,6 +188,57 @@
                 .catch(error => console.error('Erro:', error));
         }
         setInterval(atualizarSaldo, 30000);
+
+        // ========== LÓGICA DO POP-UP ==========
+        function verificarPopup() {
+            fetch('/api/popup')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.ativo) return;
+
+                    // Chave para controle de exibição
+                    let chave = 'popup_mostrado';
+                    if (data.tipo_exibicao === 'dia') {
+                        chave = 'popup_mostrado_' + new Date().toDateString();
+                    } else if (data.tipo_exibicao === 'unica') {
+                        chave = 'popup_mostrado_permanente';
+                    }
+
+                    if (localStorage.getItem(chave)) return;
+
+                    // Verificar expiração
+                    if (data.data_expiracao && new Date(data.data_expiracao) < new Date()) return;
+
+                    // Criar modal
+                    const modal = document.createElement('div');
+                    modal.className = 'popup-modal';
+                    modal.innerHTML = `
+                        <div class="popup-content">
+                            <span class="popup-close">&times;</span>
+                            ${data.imagem_url ? `<img src="${data.imagem_url}" class="popup-img" alt="imagem">` : ''}
+                            <h3>${data.titulo || ''}</h3>
+                            <p>${data.mensagem || ''}</p>
+                            ${data.link_url ? `<a href="${data.link_url}" target="_blank" class="popup-link">Ver mais</a>` : ''}
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+
+                    // Fechar e guardar estado
+                    const fecharPopup = () => {
+                        modal.remove();
+                        localStorage.setItem(chave, 'true');
+                    };
+
+                    modal.querySelector('.popup-close').onclick = fecharPopup;
+                    modal.onclick = (e) => {
+                        if (e.target === modal) fecharPopup();
+                    };
+                })
+                .catch(err => console.error('Erro ao buscar popup:', err));
+        }
+
+        // Executar ao carregar a página
+        verificarPopup();
 
         const style = document.createElement('style');
         style.textContent = `@keyframes fadeInOut { 0% { opacity: 0; transform: translateX(-50%) translateY(20px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-20px); } }`;

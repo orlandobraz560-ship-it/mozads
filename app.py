@@ -151,19 +151,8 @@ def carregar_dados():
             u['ganhos_total'] = 0
             alterado = True
 
-    if alterado:
-        salvar_dados(dados)
-        print("✅ JSON atualizado com novas estruturas.")
 
-    return dados
-
-def salvar_dados(dados):
-    with open(DADOS_JSON, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
-
-
-
-# ========== MIGRAÇÃO: ATUALIZAR NÍVEIS ==========
+    # ========== MIGRAÇÃO: ATUALIZAR NÍVEIS ==========
 niveis_corretos = {
     0: {"tarefas_por_dia": 10, "recompensa_por_anuncio": 3},
     1: {"tarefas_por_dia": 5, "recompensa_por_anuncio": 4},
@@ -183,6 +172,19 @@ for nivel in dados['niveis']:
         if nivel.get('recompensa_por_anuncio') != niveis_corretos[nid]['recompensa_por_anuncio']:
             nivel['recompensa_por_anuncio'] = niveis_corretos[nid]['recompensa_por_anuncio']
             alterado = True
+            
+
+    if alterado:
+        salvar_dados(dados)
+        print("✅ JSON atualizado com novas estruturas.")
+
+    return dados
+
+def salvar_dados(dados):
+    with open(DADOS_JSON, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, ensure_ascii=False, indent=2)
+
+
             
 
 # ==================== FUNÇÕES AUXILIARES ====================

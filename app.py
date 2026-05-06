@@ -822,12 +822,13 @@ def spin_wheel():
 @login_obrigatorio
 def saque():
     usuario = get_usuario_por_id(session['usuario_id'])
-    saldo_total = usuario['saldo_principal'] + usuario['saldo_comissao']
-    pode_sacar = usuario['nivel'] >= 1
+    # Saldo disponível para saque é apenas o saldo de comissão
+    saldo_disponivel = usuario['saldo_comissao']
+    pode_sacar = usuario['nivel'] >= 1 and saldo_disponivel >= 100
 
     if request.method == 'POST':
         if not pode_sacar:
-            flash('Apenas usuários VIP podem solicitar saque!', 'erro')
+            flash('Apenas usuários VIP com pelo menos 100 MZN na comissão podem solicitar saque!', 'erro')
             return redirect(url_for('saque'))
 
         valor = float(request.form['valor'])
@@ -840,11 +841,11 @@ def saque():
             flash('Valor mínimo para saque é 100 MZN!', 'erro')
             return redirect(url_for('saque'))
 
-        if valor > saldo_total:
-            flash('Saldo insuficiente!', 'erro')
+        if valor > saldo_disponivel:
+            flash('Saldo de comissão insuficiente!', 'erro')
             return redirect(url_for('saque'))
 
-        taxa = max(valor * 0.10, 10)   # 10% taxa, mínimo 10 MZN
+        taxa = max(valor * 0.15, 10)   # 15% taxa, mínimo 10 MZN
         valor_liquido = valor - taxa
 
         dados = carregar_dados()
@@ -864,11 +865,16 @@ def saque():
         dados['pedidos_saque'].append(novo_saque)
         salvar_dados(dados)
 
-        flash(f'✅ Saque de {valor} MZN solicitado! Taxa: {taxa:.2f} MZN', 'sucesso')
+        flash(f'✅ Saque de {valor} MZN solicitado! Taxa: {taxa:.2f} MZN | Líquido: {valor_liquido:.2f} MZN', 'sucesso')
         return redirect(url_for('painel'))
 
-    return render_template('saque.html', saldo_total=saldo_total, saldo_principal=usuario['saldo_principal'],
-                         saldo_comissao=usuario['saldo_comissao'], pode_sacar=pode_sacar)
+    return render_template('saque.html',
+                           saldo_comissao=saldo_disponivel,
+                           saldo_principal=usuario['saldo_principal'],
+                           pode_sacar=pode_sacar,
+                           nivel=usuario['nivel'],
+                           nivel_nome=usuario['nivel_nome'])
+
 
 @app.route('/convidar')
 @login_obrigatorio

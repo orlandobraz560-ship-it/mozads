@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurar Pop-up</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: Arial; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #0f3460; padding: 20px; border-radius: 15px; }
+        input, textarea, select { width: 100%; padding: 8px; margin: 8px 0; border-radius: 5px; border: none; }
+        button { background: #4caf50; padding: 10px; border: none; border-radius: 8px; color: white; cursor: pointer; }
+        .btn-voltar { background: #e94560; display: inline-block; margin-top: 20px; text-decoration: none; padding: 8px 16px; border-radius: 8px; color: white; }
+        label { display: block; margin-top: 10px; }
+        .checkbox { width: auto; margin-right: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🔔 Configurar Pop-up do Painel</h2>
+    <form method="POST">
+        <label><input type="checkbox" name="ativo" {% if popup.ativo %}checked{% endif %}> Ativar pop-up</label>
+
+        <label>Título</label>
+        <input type="text" name="titulo" value="{{ popup.titulo }}">
+
+        <label>Mensagem</label>
+        <textarea name="mensagem" rows="3">{{ popup.mensagem }}</textarea>
+
+        <label>URL da Imagem (opcional)</label>
+        <input type="text" name="imagem_url" value="{{ popup.imagem_url }}" placeholder="https://...">
+
+        <label>Link (opcional)</label>
+        <input type="text" name="link_url" value="{{ popup.link_url }}" placeholder="https://...">
+
+        <label>Tipo de exibição</label>
+        <select name="tipo_exibicao">
+            <option value="sessao" {% if popup.tipo_exibicao == 'sessao' %}selected{% endif %}>Uma vez por sessão</option>
+            <option value="dia" {% if popup.tipo_exibicao == 'dia' %}selected{% endif %}>Uma vez por dia</option>
+            <option value="unica" {% if popup.tipo_exibicao == 'unica' %}selected{% endif %}>Apenas uma vez (permanente)</option>
+        </select>
+
+        <label>Data de expiração (opcional, formato YYYY-MM-DD)</label>
+        <input type="date" name="data_expiracao" value="{{ popup.data_expiracao }}">
+
+        <button type="submit">💾 Salvar configuração</button>
+    </form>
+    <a href="/admin_painel" class="btn-voltar">← Voltar</a>
+</div>
+</body>
+</html>

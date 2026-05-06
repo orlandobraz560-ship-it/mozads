@@ -153,34 +153,21 @@
         </div>
 
         <div style="margin-top: 15px;">
-            <!-- Estagiário -->
-            <div class="nivel-card {% if usuario.nivel == 0 %}atual{% endif %}">
-                <div class="nivel-info">
-                    <h3>⭐ Estagiário</h3>
-                    <p>{{ niveis[0].tarefas_por_dia }} tarefas/dia</p>
-                </div>
-                <div class="nivel-valor">
-                    <div class="investimento">0 MZN</div>
-                    <div class="ganho">💰 +{{ niveis[0].recompensa_por_anuncio }} MZN por tarefa</div>
-                    {% if usuario.nivel == 0 %}<span class="badge-atual">ATUAL</span>{% endif %}
-                </div>
-            </div>
-
             {% for nivel in niveis %}
-                {% if nivel.id > 0 %}
-                <div class="nivel-card vip {% if usuario.nivel == nivel.id %}atual{% elif usuario.nivel > nivel.id %}bloqueado{% endif %}">
+                {% set is_estagiario = (nivel.id == 0) %}
+                <div class="nivel-card {% if not is_estagiario %}vip{% endif %} {% if usuario.nivel == nivel.id %}atual{% elif usuario.nivel > nivel.id %}bloqueado{% endif %}">
                     <div class="nivel-info">
-                        <h3>👑 {{ nivel.nome }}</h3>
+                        <h3>{% if is_estagiario %}⭐{% else %}👑{% endif %} {{ nivel.nome }}</h3>
                         <p>{{ nivel.tarefas_por_dia }} tarefas/dia</p>
                     </div>
                     <div class="nivel-valor">
                         <div class="investimento">{{ "%.0f"|format(nivel.investimento) }} MZN</div>
-                        <div class="ganho">💰 +{{ "%.0f"|format(nivel.recompensa_por_anuncio) }} MZN por tarefa</div>
+                        <div class="ganho">💰 +{{ "%.2f"|format(nivel.recompensa_por_anuncio) }} MZN por tarefa</div>
                         {% if usuario.nivel == nivel.id %}
                             <span class="badge-atual">ATUAL</span>
                         {% elif usuario.nivel > nivel.id %}
                             <div style="font-size: 12px; margin-top: 5px;">🔓 Já ultrapassou</div>
-                        {% else %}
+                        {% elif not is_estagiario %}
                             <form method="POST" style="margin-top: 10px;">
                                 <input type="hidden" name="nivel_id" value="{{ nivel.id }}">
                                 <button type="submit" class="btn-investir">💎 Investir {{ "%.0f"|format(nivel.investimento) }} MZN</button>
@@ -188,7 +175,6 @@
                         {% endif %}
                     </div>
                 </div>
-                {% endif %}
             {% endfor %}
         </div>
     </div>

@@ -487,6 +487,15 @@ def api_saldo():
         'total': usuario['saldo_principal'] + usuario['saldo_comissao']
     })
 
+@app.route('/vip', methods=['GET', 'POST'])
+@login_obrigatorio
+def vip():
+    dados = carregar_dados()
+    usuario = get_usuario_por_id(session['usuario_id'])
+    niveis = dados['niveis']   # contém todos, inclusive id=0
+    # ...
+    return render_template('vip.html', usuario=usuario, niveis=niveis)
+
 @app.route('/tarefas')
 @login_obrigatorio
 def tarefas():

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Backup - dados.json</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: monospace; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: #0f3460; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        pre { background: #16213e; padding: 15px; border-radius: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; }
+        .btn { background: #e94560; padding: 10px 20px; border-radius: 8px; text-decoration: none; color: white; display: inline-block; margin: 5px; }
+        .btn-success { background: #4caf50; }
+        .btn-warning { background: #ff9800; }
+        .btn-info { background: #2196f3; }
+        .btn-voltar { background: #e94560; }
+        .botoes { margin-bottom: 20px; }
+        textarea { width: 100%; height: 400px; font-family: monospace; padding: 10px; border-radius: 10px; border: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h2>📋 Backup do dados.json</h2>
+        <p>Visualização, download e restauração do banco de dados completo.</p>
+        <div class="botoes">
+            <button onclick="baixarBackup()" class="btn btn-success">📥 Baixar Backup</button>
+            <button onclick="mostrarRestaurar()" class="btn btn-warning">🔄 Restaurar Backup</button>
+            <a href="/admin_painel" class="btn btn-voltar">← Voltar</a>
+        </div>
+
+        <!-- Modo visualização -->
+        <div id="visualizacao">
+            <h3>📄 Conteúdo atual</h3>
+            <pre id="conteudoJson">{{ dados|tojson(indent=2) }}</pre>
+        </div>
+
+        <!-- Modo restauração (escondido) -->
+        <div id="restauracao" style="display: none;">
+            <h3>🔄 Restaurar Backup</h3>
+            <p>Cole o conteúdo de um backup válido (formato JSON) abaixo e clique em restaurar.</p>
+            <textarea id="backupJson" placeholder='Cole aqui o JSON do backup...'></textarea>
+            <button onclick="restaurarBackup()" class="btn btn-success" style="margin-top: 10px;">⚠️ Confirmar Restauração</button>
+            <button onclick="esconderRestaurar()" class="btn" style="margin-top: 10px;">Cancelar</button>
+            <p style="color: #ff9800; margin-top: 10px;"><strong>Atenção:</strong> Esta ação substituirá TODOS os dados atuais!</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function baixarBackup() {
+        const conteudo = document.getElementById('conteudoJson').innerText;
+        const blob = new Blob([conteudo], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_mozads_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function mostrarRestaurar() {
+        document.getElementById('visualizacao').style.display = 'none';
+        document.getElementById('restauracao').style.display = 'block';
+    }
+
+    function esconderRestaurar() {
+        document.getElementById('visualizacao').style.display = 'block';
+        document.getElementById('restauracao').style.display = 'none';
+        document.getElementById('backupJson').value = '';
+    }
+
+    function restaurarBackup() {
+        const novoConteudo = document.getElementById('backupJson').value;
+        if (!novoConteudo.trim()) {
+            alert('Cole um backup válido primeiro!');
+            return;
+        }
+        
+        // Validar JSON
+        try {
+            JSON.parse(novoConteudo);
+        } catch(e) {
+            alert('JSON inválido! Verifique o formato.');
+            return;
+        }
+        
+        if (confirm('⚠️ ATENÇÃO: Isso substituirá TODOS os dados atuais. Tem certeza?')) {
+            fetch('/admin_restaurar_backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ backup: novoConteudo })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    alert('✅ Backup restaurado com sucesso! A página será recarregada.');
+                    location.reload();
+                } else {
+                    alert('❌ Erro: ' + data.erro);
+                }
+            })
+            .catch(err => alert('Erro ao restaurar: ' + err));
+        }
+    }
+</script>
+</body>
+</html>

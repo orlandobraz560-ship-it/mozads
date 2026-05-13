@@ -369,12 +369,12 @@ def admin_obrigatorio(f):
 def index():
     return redirect(url_for('login'))
 
-@app.route('/backup')
-def backup():
-    return send_file(
-        "/data/dados.json",
-        as_attachment=true
-    )
+@app.route('/admin_backup')
+@admin_obrigatorio
+def admin_backup():
+    """Exibe o conteúdo do dados.json de forma formatada"""
+    dados = carregar_dados()
+    return render_template('admin_backup.html', dados=dados)
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
@@ -1843,6 +1843,33 @@ def admin_popup():
         flash('✅ Configuração do pop-up salva!', 'sucesso')
         return redirect(url_for('admin_popup'))
     return render_template('admin_popup.html', popup=popup)
+
+@app.route('/admin_restaurar_backup', methods=['POST'])
+@admin_obrigatorio
+def restaurar_backup():
+    try:
+        data = request.get_json()
+        novo_conteudo = data.get('backup', '')
+        if not novo_conteudo:
+            return jsonify({'sucesso': False, 'erro': 'Nenhum dado enviado'})
+        
+        # Validar JSON
+        backup_json = json.loads(novo_conteudo)
+        
+        # Salvar diretamente no arquivo
+        with open(DADOS_JSON, 'w', encoding='utf-8') as f:
+            json.dump(backup_json, f, ensure_ascii=False, indent=2)
+        
+        # Limpar cache da função carregar_dados (opcional)
+        global _dados_cache
+        _dados_cache = None
+        
+        return jsonify({'sucesso': True})
+    
+    except json.JSONDecodeError:
+        return jsonify({'sucesso': False, 'erro': 'JSON inválido'})
+    except Exception as e:
+        return jsonify({'sucesso': False, 'erro': str(e)})
 
 # ==================== INICIALIZAÇÃO ====================
 if __name__ == '__main__':

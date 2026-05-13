@@ -7,6 +7,7 @@ import json
 from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
+from flask import send_file
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_mude_para_algo_seguro_123456')
@@ -367,6 +368,13 @@ def admin_obrigatorio(f):
 @app.route('/')
 def index():
     return redirect(url_for('login'))
+
+@app.route('/backup')
+def backup():
+    return send_file(
+        "/data/dados.json",
+        as_attachment=true
+    )
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
